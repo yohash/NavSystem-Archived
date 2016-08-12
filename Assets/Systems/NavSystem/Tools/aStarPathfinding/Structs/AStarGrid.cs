@@ -23,6 +23,7 @@ public struct AStarNode
 		width = dimension;
 		height = dimension;
 	}
+
 	public AStarNode (int xLoc, int yLoc, int w, int h)
 	{
 		x = xLoc;
@@ -136,7 +137,13 @@ public struct AStarGrid
 		return true;
 	}
 
-	private bool ANYaStarNodesContainTestPoint (int x, int y) {
+	private bool aStarNodeContainsTestPoint (AStarNode an, int x, int y)
+	{
+		return aStarNodeContainsTestNode (an, x, y, 0);
+	}
+
+	private bool ANYaStarNodesContainTestPoint (int x, int y)
+	{
 		foreach (AStarNode an in nodes) {
 			if (aStarNodeContainsTestPoint (an, x, y)) {
 				return true;
@@ -145,12 +152,8 @@ public struct AStarGrid
 		return false;
 	}
 
-	private bool aStarNodeContainsTestPoint (AStarNode an, int x, int y)
+	private void expandNodeBoundaries (float[,] g, AStarNode an)
 	{
-		return aStarNodeContainsTestNode (an, x, y, 0);
-	}
-
-	private void expandNodeBoundaries(float[,] g, AStarNode an) {
 		// test to expand boundaries
 		// (1) 	at [top, bottom, left, right]
 		// 		check [above, below, left, right]
@@ -229,7 +232,7 @@ public struct AStarGrid
 				}
 			}
 			if (isExtendable) {
-				int i = nodes.IndexOf(an);
+				int i = nodes.IndexOf (an);
 				an.height += 1;
 				nodes [i] = an;
 			}
@@ -263,61 +266,41 @@ public struct AStarGrid
 
 	private bool nodesAreNeighbors (float[,] g, AStarNode an1, AStarNode an2)
 	{
-		// new test to discern neighborhood
+		// test to discern neighborhood
 		// (1) 	at [top, bottom, left, right]
-		// 		check [above, below, left, right]
-		//		of each square at each edge
-		// (3)  if (point is inside another node)
-		//		(a)	are they already neighbors?
-		//		(b) if (!alreadyNeighbors)
-		//				- add neighbor
-		// 	  [after checking]
-		// (4)	if (isExtendable) extend node by 1 row in current direction
-		// 		then, repeat this process
-
+		// 		check [above, below, left, right] of each square at each edge
+		// (2)  if (point is inside another node) nodes are neighbors
 
 		// check to the right - scan over the height of the node
 		for (int m = an1.y; m <= (an1.y + an1.height); m++) {
 			int x = an1.x + an1.width + 1;
-			// make sure this edge isnt off the map
-			if (pointIsInBounds (x, m)) {
-				// check if the point is in the other node
-				if (aStarNodeContainsTestPoint (an2, x, m)) {
-					return true;
-				}
-			} 
+			// make sure this edge isnt off the map && check if the point is in the other node
+			if (pointIsInBounds (x, m) && aStarNodeContainsTestPoint (an2, x, m)) {
+				return true;
+			}
 		}
 		// check to the left - scan over the height of the node
 		for (int m = an1.y; m <= (an1.y + an1.height); m++) {
 			int x = an1.x - 1;
-			// make sure this edge isnt off the map
-			if (pointIsInBounds (x, m)) {
-				// check if the point is in the other node
-				if (aStarNodeContainsTestPoint (an2, x, m)) {
-					return true;
-				}
+			// make sure this edge isnt off the map && check if the point is in the other node
+			if (pointIsInBounds (x, m) && aStarNodeContainsTestPoint (an2, x, m)) {
+				return true;
 			}
 		}
 		// check up - scan over the width of the node
 		for (int n = an1.x; n <= (an1.x + an1.width); n++) {
 			int y = an1.y + an1.height + 1;
-			// make sure this edge isnt off the map
-			if (pointIsInBounds (n, y)) {
-				// check if the point is in the other node
-				if (aStarNodeContainsTestPoint (an2, n, y)) {
-					return true;
-				}
+			// make sure this edge isnt off the map && check if the point is in the other node
+			if (pointIsInBounds (n, y) && aStarNodeContainsTestPoint (an2, n, y)) {
+				return true;
 			} 
 		}
 		// check down - scan over the width of the node
 		for (int n = an1.x; n <= (an1.x + an1.width); n++) {
 			int y = an1.y - 1;
-			// make sure this edge isnt off the map
-			if (pointIsInBounds (n, y)) {
-				// check if the point is in the other node
-				if (aStarNodeContainsTestPoint (an2, n, y)) {
-					return true;
-				}
+			// make sure this edge isnt off the map && check if the point is in the other node
+			if (pointIsInBounds (n, y) && aStarNodeContainsTestPoint (an2, n, y)) {
+				return true;
 			}
 		}
 
