@@ -66,21 +66,56 @@ public class NavSystem : MonoBehaviour {
 		theAStarGrid = new AStarGrid (theMapData.getHeightMap(), theMapData.getDiscomfortMap(), nodeHalfDimensions);
 
 
-		fuckWithNodes ();
+		plotNodeCenterPoints();
+		plotNodeNeighbors ();
 	}
 
-	void fuckWithNodes() {
-		foreach (AStarNode an in theAStarGrid.nodes) {
-			if (an.dim == nodeHalfDimensions [0]) {
-				Debug.DrawRay (new Vector3 (an.x, 10f, an.y), Vector3.down * 10f, Color.black, 10f);
-			} else if (an.dim == nodeHalfDimensions [1]) {
-				Debug.DrawRay (new Vector3 (an.x, 10f, an.y), Vector3.down * 10f, Color.blue, 10f);
-			} else if (an.dim == nodeHalfDimensions [2]) {
-				Debug.DrawRay (new Vector3 (an.x, 10f, an.y), Vector3.down * 10f, Color.cyan, 10f);
-			} else if (an.dim == nodeHalfDimensions [3]) {
-				Debug.DrawRay (new Vector3 (an.x, 10f, an.y), Vector3.down * 10f, Color.green, 10f);
-			} else if (an.dim == nodeHalfDimensions [4]) {
-				Debug.DrawRay (new Vector3 (an.x, 10f, an.y), Vector3.down * 10f, Color.yellow, 10f);
+	void plotNodeCenterPoints() {
+		float highest = Mathf.Max (nodeHalfDimensions);
+		float lowest = Mathf.Min (nodeHalfDimensions);
+
+		for (int k = 0; k < theAStarGrid.nodes.Count; k++) {
+			float val = (((float)theAStarGrid.nodes [k].dim - lowest) / (highest-lowest));
+
+			float dim = theAStarGrid.nodes [k].dim;
+			Debug.DrawRay (new Vector3 (theAStarGrid.nodes[k].x, 10f, theAStarGrid.nodes[k].y), Vector3.down * 10f, rainbow(val), 10f);
+		}
+	}
+
+	Color rainbow(float f) {
+		float r, g, b;
+		r = Mathf.Abs (Mathf.Sin (Mathf.Deg2Rad * (f * 360f)));
+		g = Mathf.Abs (Mathf.Sin (Mathf.Deg2Rad * ((f+0.333f) * 360f)));
+		b = Mathf.Abs (Mathf.Sin (Mathf.Deg2Rad * ((f+0.666f) * 360f)));
+		return new Color (r, g, b);
+	}
+
+	void plotNodeNeighbors() {
+
+		List<AStarNode> nodes = theAStarGrid.nodes;
+
+		for (int i = 0; i < nodes.Count; i++) {
+
+			AStarNode an1 = nodes [i];
+
+			float thisY = Random.value + 5f;
+			Color c = new Color (Random.value, Random.value, Random.value);
+
+			//Debug.Log ("drawing node: " + i + "/"+nodes.Count+", dim=" + an1.dim+" at (x,y) = "+an1.x+" , "+an1.y);
+
+			List<AStarNeighbor> theNeibs = theAStarGrid.nodeNeighbors [an1];
+
+			for (int k = 0; k < theNeibs.Count; k++) {
+
+				AStarNeighbor an2 = theNeibs [k];
+
+				Vector3 start = new Vector3 (an1.x, thisY, an1.y);
+
+				Vector3 fin = new Vector3 (an2.theNode.x, thisY, an2.theNode.y);
+
+				Vector3 dir = fin - start;
+
+				Debug.DrawRay (start,dir,  c, 10f);
 			}
 		}
 	}
