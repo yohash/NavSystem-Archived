@@ -75,58 +75,6 @@ public class SquareGrid : WeightedGraph<Location>
 		}
 	}
 }
-//
-//// this is custom written from redbloblgames.com 
-//// this is not the most efficient implementation of a priority queue
-//// best to try and use the one in C5 generic collection library
-//// or next best thing to it
-//public class PriorityQueue<T>
-//{
-//	private List<Tuple<T, double>> elements = new List<Tuple<T, double>>();
-//
-//	public int Count
-//	{
-//		get { return elements.Count; }
-//	}
-//
-//	public void Enqueue(T item, double priority)
-//	{
-//		elements.Add(Tuple.New(item, priority));
-//	}
-//
-//	public T Dequeue()
-//	{
-//		int bestIndex = 0;
-//		for (int i = 0; i < elements.Count; i++) {
-//			if (elements[i].Second < elements[bestIndex].Second) {
-//				bestIndex = i;
-//			}
-//		}
-//		T bestItem = elements[bestIndex].First;
-//		elements.RemoveAt(bestIndex);
-//		return bestItem;
-//	}
-//}
-//// since Unity doesnt have Tuples, we have to implement
-//// our own Tuple class as well
-//public class Tuple<T1, T2>
-//{
-//	public T1 First { get; private set; }
-//	public T2 Second { get; private set; }
-//	internal Tuple(T1 first, T2 second)
-//	{
-//		First = first;
-//		Second = second;
-//	}
-//}
-//public static class Tuple
-//{
-//	public static Tuple<T1, T2> New<T1, T2>(T1 first, T2 second)
-//	{
-//		var tuple = new Tuple<T1, T2>(first, second);
-//		return tuple;
-//	}
-//}
 
 // the A* pathfinding algorithm as implemented by www.redblobgames.com
 public class AStarSearch {

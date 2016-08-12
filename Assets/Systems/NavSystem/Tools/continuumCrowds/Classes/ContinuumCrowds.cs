@@ -606,7 +606,6 @@ public class ContinuumCrowds
 	}
 
 	bool isPointValid (fastLocation l) {return isPointValid (l.x, l.y);}
-	bool isPointValid (Location l) {return isPointValid(l.x, l.y);}
 	bool isPointValid (Vector2 v)
 	{
 		return isPointValid((int)v.x, (int)v.y);

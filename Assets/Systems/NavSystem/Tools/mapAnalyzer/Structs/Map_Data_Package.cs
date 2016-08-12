@@ -20,7 +20,7 @@ public struct Map_Data_Package
 
 	private int _xdim, _ydim;
 
-	public Map_Data_Package (float[,] h, float [,] g, Vector2[,] dh)
+	public Map_Data_Package (float[,] h, float[,] g, Vector2[,] dh)
 	{
 		this._h = h;
 		this._g = g;
@@ -30,46 +30,98 @@ public struct Map_Data_Package
 		this._ydim = _h.GetLength (1);
 	}
 
-	public void overwriteDiscomfortData(Rect r) {
+	public void overwriteDiscomfortData (Rect r)
+	{
 		// put code in here to change the global discomfort data
 		// intended for addition of buildings
 		// long term... can handle pathing with ground deformation?
 	}
 
-	// 
-	public float[,] getHeightMap(Rect r) {
-		float[,] h = new float[(int) r.width, (int) r.height];
+	// these getters containing an argument will return
+	// the data within the Rect, r
+	public float[,] getHeightMap (Rect r)
+	{
+		r = getRectContaining (r);
+		float[,] ht = new float[(int)r.width, (int)r.height];
+		int xt = (int)r.x;
+		int yt = (int)r.y;
+		for (int n = 0; n < (int)r.width; n++) {
+			for (int m = 0; m < (int)r.height; m++) {
+				if (pointIsValid (new Vector2 (xt + n, yt + m))) {
+					ht [n, m] = _h [xt + n, yt + m];
+				} else {
+					ht [n, m] = 0f;
+				}
+			}
+		}
+		return ht;
+	}
 
-		return _h;
+	public float[,] getDiscomfortMap (Rect r)
+	{
+		r = getRectContaining (r);
+		float[,] gt = new float[(int)r.width, (int)r.height];
+		int xt = (int)r.x;
+		int yt = (int)r.y;
+		for (int n = 0; n < (int)r.width; n++) {
+			for (int m = 0; m < (int)r.height; m++) {
+				if (pointIsValid (new Vector2 (xt + n, yt + m))) {
+					gt [n, m] = _g [xt + n, yt + m];
+				} else {
+					gt [n, m] = 0f;
+				}
+			}
+		}
+		return gt;
 	}
-	public float[,] getDiscomfortMap(Rect r) {
-		return _g;
-	}
-	public Vector2[,] getHeightGradientMap(Rect r) {
-		return _dh;
+
+	public Vector2[,] getHeightGradientMap (Rect r)
+	{
+		r = getRectContaining (r);
+		Vector2[,] dht = new Vector2[(int)r.width, (int)r.height];
+		int xt = (int)r.x;
+		int yt = (int)r.y;
+		for (int n = 0; n < (int)r.width; n++) {
+			for (int m = 0; m < (int)r.height; m++) {
+				if (pointIsValid (new Vector2 (xt + n, yt + m))) {
+					dht [n, m] = _dh [xt + n, yt + m];
+				}
+			}
+		}
+		return dht;
 	}
 
 	// default return value returns the entire map
-	public float[,] getHeightMap() {
+	public float[,] getHeightMap ()
+	{
 		return _h;
 	}
-	public float[,] getDiscomfortMap() {
+
+	public float[,] getDiscomfortMap ()
+	{
 		return _g;
 	}
-	public Vector2[,] getHeightGradientMap() {
+
+	public Vector2[,] getHeightGradientMap ()
+	{
 		return _dh;
 	}
 
 	// error-checking function to make point isnt out of bounds
-	private bool isPointValid(Vector2 p) {
+	private bool pointIsValid (Vector2 p)
+	{
 		if ((p.x < 0) || (p.y < 0) || (p.x > _xdim - 1) || (p.y > _ydim - 1)) {
 			return false;
 		}
 		return true;
 	}
 
-	// rounding function to make sure the data returned 
-	private Rect getRectContaining(Rect r) {
+	// Rounding function to make sure the data returned is in a box
+	// surrounding the sent (floating pt) coordinates.
+	// Takes floor of bottom corner, and ceil of top corner
+	// to encompass the sent rect
+	private Rect getRectContaining (Rect r)
+	{
 		int x, y, dx, dy;
 
 		x = Mathf.FloorToInt (r.x);
