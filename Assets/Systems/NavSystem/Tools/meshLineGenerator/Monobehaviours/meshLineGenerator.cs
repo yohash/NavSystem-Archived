@@ -5,6 +5,9 @@ using System.Collections.Generic;
 
 public class meshLineGenerator : MonoBehaviour {
 
+	public float lineWidth = 0.1f;
+	public float groundYOffset = 0.1f;
+
 	public bool ____forDebugPurpose___;
 	public Vector3[] linePoints;
 	public Vector3[] lineNormals;
@@ -18,14 +21,16 @@ public class meshLineGenerator : MonoBehaviour {
 	Mesh mesh;
 	Transform tr;
 
-	float lineWidth = 0.5f;
-	float groundYOffset = 0.1f;
-
+	Material mat;
+	Renderer rend;
 
 	void Awake () {
 		meshFilter = GetComponent<MeshFilter>();
 		mesh = meshFilter.mesh;
 		tr = GetComponent<Transform>();
+		rend = GetComponent<Renderer> ();
+
+		mat = rend.material;
 	}
 
 	void Start () {
@@ -41,7 +46,10 @@ public class meshLineGenerator : MonoBehaviour {
 	public void setGroundOffset (float offset) {
 		groundYOffset = offset;
 	}
-
+	public void setColor(Color c) {
+		mat.color = c;
+		mat.SetColor ("_EmissionColor", c);
+	}
 	public void setLinePoints (Vector3[] points, Vector3[] normals, float offset) {
 		setGroundOffset(offset);
 		setLinePoints(points, normals);

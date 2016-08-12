@@ -3,28 +3,39 @@ using System.Collections;
 using System.Collections.Generic;
 
 // AStarGrid's sole purpose is to take in the height map and discomfort map
-// produced by the MapAnalyzer. Then, using a simple increasing resolution 
+// produced by the MapAnalyzer. Then, using a simple increasing resolution
 // square search, it approximates the map with a grid that will be used
-// for AStar calculations. 
+// for AStar calculations.
 
 
 public struct AStarNode
 {
+	// this is essentially a (int) version of a Rect
 	public int x, y;
-	public int dim;
+	// lower-left corner
+	public int width, height;
+	// width and height from lower-left corner
 
 	public AStarNode (int xLoc, int yLoc, int dimension)
 	{
 		x = xLoc;
 		y = yLoc;
-		dim = dimension;
+		width = dimension;
+		height = dimension;
+	}
+	public AStarNode (int xLoc, int yLoc, int w, int h)
+	{
+		x = xLoc;
+		y = yLoc;
+		width = w;
+		height = h;
 	}
 }
 
 public struct AStarNeighbor
 {
-	public float cost;
 	public AStarNode theNode;
+	public float cost;
 
 	public AStarNeighbor (AStarNode n, float c)
 	{
@@ -34,9 +45,12 @@ public struct AStarNeighbor
 }
 
 public struct AStarGrid
-{	
+{
 	public Dictionary<AStarNode,List<AStarNeighbor>> nodeNeighbors;
 	public List<AStarNode> nodes;
+
+	private int xMax;
+	private int yMax;
 
 	public AStarGrid (float[,] h, float[,] g, int[] nodeSizes)
 	{
@@ -45,14 +59,14 @@ public struct AStarGrid
 
 		int dim;
 
-		int xMax = h.GetLength (0);
-		int yMax = h.GetLength (1);
+		xMax = h.GetLength (0);
+		yMax = h.GetLength (1);
 
 		// this portion finds suitable locations for all the nodes
 		for (int k = 0; k < nodeSizes.Length; k++) {
 			dim = nodeSizes [k];
-			for (int n = dim; n < xMax - dim; n++) {
-				for (int m = dim; m < xMax - dim; m++) {
+			for (int n = 0; n < xMax - dim; n++) {
+				for (int m = 0; m < yMax - dim; m++) {
 					if (nodeIsValidAtPoint (g, n, m, dim)) {
 						nodes.Add (new AStarNode (n, m, dim));
 					}
@@ -60,25 +74,31 @@ public struct AStarGrid
 			}
 		}
 
+		// this portion fills empty holes and gaps by dimension by
+		// dimension expanding each node
+		foreach (AStarNode an in nodes) {
+			expandNodeBoundaries (g, an);
+		}
+
 		// This portion identifies a given node's neighbors.
 		// Each node only needs to be compared to the others once.
 		// Any further testing could produce redundancies.
 		// This is an (N^2)/2 problem.
 		for (int i = 0; i < nodes.Count; i++) {
-			for (int k = i+1; k < nodes.Count; k++) {
-				if (nodesAreNeighbors(nodes[i],nodes[k])) {
+			for (int k = i + 1; k < nodes.Count; k++) {
+				if (nodesAreNeighbors (g, nodes [i], nodes [k])) {
 					addNodesToNodeNeighbors (nodes [i], nodes [k]);
 				}
 			}
 			// if the node has no neighbors, add it to the dictionary with an empty list
 			if (!nodeNeighbors.ContainsKey (nodes [i])) {
-				List<AStarNeighbor> neighbors = new List<AStarNeighbor>();
+				List<AStarNeighbor> neighbors = new List<AStarNeighbor> ();
 				nodeNeighbors.Add (nodes [i], neighbors);
 			}
 		}
 	}
 
-	public bool nodeIsValidAtPoint (float[,] g, int x, int y, int dim)
+	private bool nodeIsValidAtPoint (float[,] g, int x, int y, int dim)
 	{
 		// first, check if any spot in this possible node is inside a node already
 		foreach (AStarNode n in nodes) {
@@ -87,8 +107,9 @@ public struct AStarGrid
 			}
 		}
 		// next, check if any spot in the node is in unpassable terrain
-		for (int n = x - dim; n < x + dim; n++) {
-			for (int m = y - dim; m < y + dim; m++) {
+		// use <= to make sure we go right to the edge of the node
+		for (int n = x; n <= x + dim; n++) {
+			for (int m = y; m <= y + dim; m++) {
 				if (g [n, m] == 1)
 					return false;
 			}
@@ -97,78 +118,252 @@ public struct AStarGrid
 		return true;
 	}
 
-	public bool aStarNodeContainsTestNode (AStarNode an, int x, int y, int dim)
+	private bool aStarNodeContainsTestNode (AStarNode an, int x, int y, int dim)
 	{
 		// perform basic two-rectangle collision text
 		// if ANY of the following cases are true, then the rectangles CANNOT overlap
 		// (1) if rect1 bottom higher than rect2 top - CANNOT OVERLAP
 		// (2) if rect1 top lower than rect2 bottom - CANNOT OVERLAP
-		// (3) if rect1 left greater than right of rect2 right - CANNOT OVERLAP
-		// (4) if rect1 right less than left of rect2 left - CANNOT OVERLAP
-		if ((y - dim) > (an.y + an.dim) ||
-		    (y + dim) < (an.y - an.dim) ||
-		    (x - dim) > (an.x + an.dim) ||
-		    (x + dim) < (an.x - an.dim)) {
+		// (3) if rect1 left greater than rect2 right - CANNOT OVERLAP
+		// (4) if rect1 right less than rect2 left - CANNOT OVERLAP
+		if ((y) > (an.y + an.height) ||
+		    (y + dim) < (an.y) ||
+		    (x) > (an.x + an.width) ||
+		    (x + dim) < (an.x)) {
 			return false;
 		}
 		// if all the tests are false, then this aStarNode DOES contain the test node
 		return true;
 	}
 
-	public bool nodesAreNeighbors (AStarNode an1, AStarNode an2)
-	{
-		// SUPER IMPORTANT NOTE:
-		// THIS IS NOT A GOOD ENOUGH TEST
-		// it doesnt consider nodes hopping walls
-		// - we'll have to check top, bottom, R and L individually
-		//   to see if(there are no g==1) && if(this boundary is inside another node)
-
-
-		// best way to test (maybe) is make one node's dimension bigger
-		// by 1, then use aStarNodeContainsTestNode.
-		// if the answer is true, then they are neighbors
-		if (aStarNodeContainsTestNode (an1, an2.x, an2.y, an2.dim + 1)) {
-			return true;
-		} else if (aStarNodeContainsTestNode (an1, an2.x, an2.y, an2.dim + 2)) {
-			// THIS IS MY SUPER LAME WAY TO FIX SEQUENTIALLY SMALLER NODES OF ODD SIDE LENGTH
-			// MISSING SIMPLE CONNECTIONS
-			// IT WILL ACTUALLY BE PERMANENT ONCE WE TEST THIS CONDITION PROPERLY
-			return true;
+	private bool ANYaStarNodesContainTestPoint (int x, int y) {
+		foreach (AStarNode an in nodes) {
+			if (aStarNodeContainsTestPoint (an, x, y)) {
+				return true;
+			}
 		}
 		return false;
 	}
 
-	public void addNodesToNodeNeighbors(AStarNode an1, AStarNode an2) {
-		// here, we need to add the nodes to each other's dictionary entries
+	private bool aStarNodeContainsTestPoint (AStarNode an, int x, int y)
+	{
+		return aStarNodeContainsTestNode (an, x, y, 0);
+	}
+
+	private void expandNodeBoundaries(float[,] g, AStarNode an) {
+		// test to expand boundaries
+		// (1) 	at [top, bottom, left, right]
+		// 		check [above, below, left, right]
+		//		of each square at each edge
+		// (2)	if (unpathable) isExtendable = false;
+		// (3)  if (point is inside another node) isExtendable = false;
+		// (4)	if (isExtendable) extend node by 1 row in current direction
+
+		// check to the right
+		bool isExtendable = true;
+		while (isExtendable) {
+			// scan over the height of the node
+			for (int m = an.y; m <= (an.y + an.height); m++) {
+				int x = an.x + an.width + 1;
+				// make sure this edge isnt off the map
+				if (pointIsInBounds (x, m)) { 
+					// check if the spot is unpathable
+					if (g [x, m] == 1) {
+						isExtendable = false;
+					}
+					if (ANYaStarNodesContainTestPoint (x, m)) {
+						isExtendable = false;
+					}
+				} else {
+					isExtendable = false;
+				}
+			}
+			if (isExtendable) {
+				int i = nodes.IndexOf (an);
+				an.width += 1;
+				nodes [i] = an;
+			}
+		}
+		// check to the left
+		isExtendable = true;
+		while (isExtendable) {
+			// scan over the height of the node
+			for (int m = an.y; m <= (an.y + an.height); m++) {
+				int x = an.x - 1;
+				// make sure this edge isnt off the map
+				if (pointIsInBounds (x, m)) {
+					// check if the spot is unpathable
+					if (g [x, m] == 1) {
+						isExtendable = false;
+					}
+					if (ANYaStarNodesContainTestPoint (x, m)) {
+						isExtendable = false;
+					}
+				} else {
+					isExtendable = false;
+				}
+			}
+			if (isExtendable) {
+				int i = nodes.IndexOf (an);
+				an.x -= 1;
+				nodes [i] = an;
+			}
+		}
+		// check up
+		isExtendable = true;
+		while (isExtendable) {
+			// scan over the height of the node
+			for (int n = an.x; n <= (an.x + an.width); n++) {
+				int y = an.y + an.height + 1;
+				// make sure this edge isnt off the map
+				if (pointIsInBounds (n, y)) {
+					// check if the spot is unpathable
+					if (g [n, y] == 1) {
+						isExtendable = false;
+					}
+					if (ANYaStarNodesContainTestPoint (n, y)) {
+						isExtendable = false;
+					}
+				} else {
+					isExtendable = false;
+				}
+			}
+			if (isExtendable) {
+				int i = nodes.IndexOf(an);
+				an.height += 1;
+				nodes [i] = an;
+			}
+		}
+		// check down
+		isExtendable = true;
+		while (isExtendable) {
+			// scan over the height of the node
+			for (int n = an.x; n <= (an.x + an.width); n++) {
+				int y = an.y - 1;
+				// make sure this edge isnt off the map
+				if (pointIsInBounds (n, y)) {
+					// check if the spot is unpathable
+					if (g [n, y] == 1) {
+						isExtendable = false;
+					}
+					if (ANYaStarNodesContainTestPoint (n, y)) {
+						isExtendable = false;
+					}
+				} else {
+					isExtendable = false;
+				}
+			}
+			if (isExtendable) {
+				int i = nodes.IndexOf (an);
+				an.y -= 1;
+				nodes [i] = an;
+			}
+		}
+	}
+
+	private bool nodesAreNeighbors (float[,] g, AStarNode an1, AStarNode an2)
+	{
+		// new test to discern neighborhood
+		// (1) 	at [top, bottom, left, right]
+		// 		check [above, below, left, right]
+		//		of each square at each edge
+		// (3)  if (point is inside another node)
+		//		(a)	are they already neighbors?
+		//		(b) if (!alreadyNeighbors)
+		//				- add neighbor
+		// 	  [after checking]
+		// (4)	if (isExtendable) extend node by 1 row in current direction
+		// 		then, repeat this process
+
+
+		// check to the right - scan over the height of the node
+		for (int m = an1.y; m <= (an1.y + an1.height); m++) {
+			int x = an1.x + an1.width + 1;
+			// make sure this edge isnt off the map
+			if (pointIsInBounds (x, m)) {
+				// check if the point is in the other node
+				if (aStarNodeContainsTestPoint (an2, x, m)) {
+					return true;
+				}
+			} 
+		}
+		// check to the left - scan over the height of the node
+		for (int m = an1.y; m <= (an1.y + an1.height); m++) {
+			int x = an1.x - 1;
+			// make sure this edge isnt off the map
+			if (pointIsInBounds (x, m)) {
+				// check if the point is in the other node
+				if (aStarNodeContainsTestPoint (an2, x, m)) {
+					return true;
+				}
+			}
+		}
+		// check up - scan over the width of the node
+		for (int n = an1.x; n <= (an1.x + an1.width); n++) {
+			int y = an1.y + an1.height + 1;
+			// make sure this edge isnt off the map
+			if (pointIsInBounds (n, y)) {
+				// check if the point is in the other node
+				if (aStarNodeContainsTestPoint (an2, n, y)) {
+					return true;
+				}
+			} 
+		}
+		// check down - scan over the width of the node
+		for (int n = an1.x; n <= (an1.x + an1.width); n++) {
+			int y = an1.y - 1;
+			// make sure this edge isnt off the map
+			if (pointIsInBounds (n, y)) {
+				// check if the point is in the other node
+				if (aStarNodeContainsTestPoint (an2, n, y)) {
+					return true;
+				}
+			}
+		}
+
+		return false;
+	}
+
+	private void addNodesToNodeNeighbors (AStarNode an1, AStarNode an2)
+	{	// here, we need to add the nodes to each other's dictionary entries
 
 		// first, calculate the cost between the two
-		float cost = Mathf.Sqrt((an1.x - an2.x)*(an1.x - an2.x) + (an1.y - an2.y)*(an1.y - an2.y));
+		float cost = Mathf.Sqrt ((an1.x - an2.x) * (an1.x - an2.x) + (an1.y - an2.y) * (an1.y - an2.y));
 
 		// create a neighbor struct of each one
-		AStarNeighbor an1Neigh = new AStarNeighbor(an1, cost);
-		AStarNeighbor an2Neigh = new AStarNeighbor(an2, cost );
+		AStarNeighbor an1Neigh = new AStarNeighbor (an1, cost);
+		AStarNeighbor an2Neigh = new AStarNeighbor (an2, cost);
 
-		List<AStarNeighbor> neighbors = new List<AStarNeighbor>();
+		List<AStarNeighbor> neighbors = new List<AStarNeighbor> ();
 
 		// next, see if an1 has a dictionary entry, and if so, copy it
 		if (nodeNeighbors.ContainsKey (an1)) {
 			neighbors = nodeNeighbors [an1];
 			neighbors.Add (an2Neigh);
-			nodeNeighbors[an1] = neighbors;
+			nodeNeighbors [an1] = neighbors;
 		} else {
 			neighbors.Add (an2Neigh);
 			nodeNeighbors.Add (an1, neighbors);
 		}
 
 		// do the same for an2
-		neighbors = new List<AStarNeighbor>();
+		neighbors = new List<AStarNeighbor> ();
 		if (nodeNeighbors.ContainsKey (an2)) {
 			neighbors = nodeNeighbors [an2];
 			neighbors.Add (an1Neigh);
-			nodeNeighbors[an2] = neighbors;
+			nodeNeighbors [an2] = neighbors;
 		} else {
 			neighbors.Add (an1Neigh);
 			nodeNeighbors.Add (an2, neighbors);
 		}
+	}
+
+
+	private bool pointIsInBounds (int x, int y)
+	{
+		if ((x < 0) || (y < 0) || (x > xMax - 1) || (y > yMax - 1)) {
+			return false;
+		}
+		return true;
 	}
 }
