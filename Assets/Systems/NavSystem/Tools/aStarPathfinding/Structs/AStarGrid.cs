@@ -11,25 +11,72 @@ using System.Collections.Generic;
 public struct AStarNode
 {
 	// this is essentially a (int) version of a Rect
-	public int x, y;
 	// lower-left corner
-	public int width, height;
+	private int xCorner, yCorner;
 	// width and height from lower-left corner
+	private int width, height;
+
+	// the CENTER x and y (these are floats)
+	public float x, y;
 
 	public AStarNode (int xLoc, int yLoc, int dimension)
 	{
-		x = xLoc;
-		y = yLoc;
+		xCorner = xLoc;
+		yCorner = yLoc;
 		width = dimension;
 		height = dimension;
+		x = (xCorner + (width+1) / 2f);
+		y = (yCorner + (height+1) / 2f);
 	}
 
 	public AStarNode (int xLoc, int yLoc, int w, int h)
 	{
-		x = xLoc;
-		y = yLoc;
+		xCorner = xLoc;
+		yCorner = yLoc;
 		width = w;
 		height = h;
+		x = (xCorner + (width+1) / 2f);
+		y = (yCorner + (height+1) / 2f);
+	}
+
+	public static bool operator == (AStarNode l1, AStarNode l2)
+	{
+		return((l1.getXCorner () == l2.getXCorner ()) &&
+		(l1.getYCorner () == l2.getYCorner ()) &&
+		(l1.getHeight () == l2.getHeight ()) &&
+		(l1.getWidth () == l2.getWidth ()) &&
+		(l1.x == l2.x) && (l1.y == l2.y)
+		);
+	}
+
+	public static bool Equals (AStarNode l1, AStarNode l2)
+	{
+		return(l1==l2);
+	}
+
+	public static bool operator != (AStarNode l1, AStarNode l2)
+	{
+		return(!(l1 == l2));
+	}
+
+	public int getXCorner ()
+	{
+		return xCorner;
+	}
+
+	public int getYCorner ()
+	{
+		return yCorner;
+	}
+
+	public int getHeight ()
+	{
+		return height;
+	}
+
+	public int getWidth ()
+	{
+		return width;
 	}
 }
 
@@ -75,9 +122,12 @@ public struct AStarGrid
 			}
 		}
 
+		int num = 0;
 		// this portion fills empty holes and gaps by dimension by
 		// dimension expanding each node
 		foreach (AStarNode an in nodes) {
+			num++;
+			Debug.Log ("node #: " + num + "/" + nodes.Count + ", with index "+nodes.IndexOf (an));
 			expandNodeBoundaries (g, an);
 		}
 
@@ -127,10 +177,10 @@ public struct AStarGrid
 		// (2) if rect1 top lower than rect2 bottom - CANNOT OVERLAP
 		// (3) if rect1 left greater than rect2 right - CANNOT OVERLAP
 		// (4) if rect1 right less than rect2 left - CANNOT OVERLAP
-		if ((y) > (an.y + an.height) ||
-		    (y + dim) < (an.y) ||
-		    (x) > (an.x + an.width) ||
-		    (x + dim) < (an.x)) {
+		if ((y) > (an.getYCorner () + an.getHeight ()) ||
+		    (y + dim) < (an.getYCorner ()) ||
+		    (x) > (an.getXCorner () + an.getWidth ()) ||
+		    (x + dim) < (an.getXCorner ())) {
 			return false;
 		}
 		// if all the tests are false, then this aStarNode DOES contain the test node
@@ -152,7 +202,7 @@ public struct AStarGrid
 		return false;
 	}
 
-	private void expandNodeBoundaries (float[,] g, AStarNode an)
+	private void expandNodeBoundaries (float[,] g, AStarNode thisNode)
 	{
 		// test to expand boundaries
 		// (1) 	at [top, bottom, left, right]
@@ -162,12 +212,14 @@ public struct AStarGrid
 		// (3)  if (point is inside another node) isExtendable = false;
 		// (4)	if (isExtendable) extend node by 1 row in current direction
 
+		AStarNode an = thisNode;
+
 		// check to the right
 		bool isExtendable = true;
 		while (isExtendable) {
 			// scan over the height of the node
-			for (int m = an.y; m <= (an.y + an.height); m++) {
-				int x = an.x + an.width + 1;
+			for (int m = an.getYCorner (); m <= (an.getYCorner () + an.getHeight ()); m++) {
+				int x = an.getXCorner () + an.getWidth () + 1;
 				// make sure this edge isnt off the map
 				if (pointIsInBounds (x, m)) { 
 					// check if the spot is unpathable
@@ -182,17 +234,16 @@ public struct AStarGrid
 				}
 			}
 			if (isExtendable) {
-				int i = nodes.IndexOf (an);
-				an.width += 1;
-				nodes [i] = an;
+				int w = an.getWidth () + 1;
+				an = new AStarNode (an.getXCorner (), an.getYCorner (), w, an.getHeight ());
 			}
 		}
 		// check to the left
 		isExtendable = true;
 		while (isExtendable) {
 			// scan over the height of the node
-			for (int m = an.y; m <= (an.y + an.height); m++) {
-				int x = an.x - 1;
+			for (int m = an.getYCorner (); m <= (an.getYCorner () + an.getHeight ()); m++) {
+				int x = an.getXCorner () - 1;
 				// make sure this edge isnt off the map
 				if (pointIsInBounds (x, m)) {
 					// check if the spot is unpathable
@@ -207,17 +258,17 @@ public struct AStarGrid
 				}
 			}
 			if (isExtendable) {
-				int i = nodes.IndexOf (an);
-				an.x -= 1;
-				nodes [i] = an;
+				int xc = an.getXCorner () - 1;
+				int w = an.getWidth () + 1;
+				an = new AStarNode (xc, an.getYCorner (), w, an.getHeight ());
 			}
 		}
 		// check up
 		isExtendable = true;
 		while (isExtendable) {
 			// scan over the height of the node
-			for (int n = an.x; n <= (an.x + an.width); n++) {
-				int y = an.y + an.height + 1;
+			for (int n = an.getXCorner (); n <= (an.getXCorner () + an.getWidth ()); n++) {
+				int y = an.getYCorner () + an.getHeight () + 1;
 				// make sure this edge isnt off the map
 				if (pointIsInBounds (n, y)) {
 					// check if the spot is unpathable
@@ -233,16 +284,16 @@ public struct AStarGrid
 			}
 			if (isExtendable) {
 				int i = nodes.IndexOf (an);
-				an.height += 1;
-				nodes [i] = an;
+				int h = an.getHeight () + 1;
+				an = new AStarNode (an.getXCorner (), an.getYCorner (), an.getWidth (), h);
 			}
 		}
 		// check down
 		isExtendable = true;
 		while (isExtendable) {
 			// scan over the height of the node
-			for (int n = an.x; n <= (an.x + an.width); n++) {
-				int y = an.y - 1;
+			for (int n = an.getXCorner (); n <= (an.getXCorner () + an.getWidth ()); n++) {
+				int y = an.getYCorner () - 1;
 				// make sure this edge isnt off the map
 				if (pointIsInBounds (n, y)) {
 					// check if the spot is unpathable
@@ -257,10 +308,14 @@ public struct AStarGrid
 				}
 			}
 			if (isExtendable) {
-				int i = nodes.IndexOf (an);
-				an.y -= 1;
-				nodes [i] = an;
+				int yc = an.getYCorner () - 1;
+				int h = an.getHeight () + 1;
+				an = new AStarNode (an.getXCorner (), yc, an.getWidth (), h);
 			}
+		}
+		if (an != thisNode) {
+			int i = nodes.IndexOf (thisNode);
+			nodes [i] = an;
 		}
 	}
 
@@ -272,32 +327,32 @@ public struct AStarGrid
 		// (2)  if (point is inside another node) nodes are neighbors
 
 		// check to the right - scan over the height of the node
-		for (int m = an1.y; m <= (an1.y + an1.height); m++) {
-			int x = an1.x + an1.width + 1;
+		for (int m = an1.getYCorner (); m <= (an1.getYCorner () + an1.getHeight ()); m++) {
+			int x = an1.getXCorner () + an1.getWidth () + 1;
 			// make sure this edge isnt off the map && check if the point is in the other node
 			if (pointIsInBounds (x, m) && aStarNodeContainsTestPoint (an2, x, m)) {
 				return true;
 			}
 		}
 		// check to the left - scan over the height of the node
-		for (int m = an1.y; m <= (an1.y + an1.height); m++) {
-			int x = an1.x - 1;
+		for (int m = an1.getYCorner (); m <= (an1.getYCorner () + an1.getHeight ()); m++) {
+			int x = an1.getXCorner () - 1;
 			// make sure this edge isnt off the map && check if the point is in the other node
 			if (pointIsInBounds (x, m) && aStarNodeContainsTestPoint (an2, x, m)) {
 				return true;
 			}
 		}
 		// check up - scan over the width of the node
-		for (int n = an1.x; n <= (an1.x + an1.width); n++) {
-			int y = an1.y + an1.height + 1;
+		for (int n = an1.getXCorner (); n <= (an1.getXCorner () + an1.getWidth ()); n++) {
+			int y = an1.getYCorner () + an1.getHeight () + 1;
 			// make sure this edge isnt off the map && check if the point is in the other node
 			if (pointIsInBounds (n, y) && aStarNodeContainsTestPoint (an2, n, y)) {
 				return true;
 			} 
 		}
 		// check down - scan over the width of the node
-		for (int n = an1.x; n <= (an1.x + an1.width); n++) {
-			int y = an1.y - 1;
+		for (int n = an1.getXCorner (); n <= (an1.getXCorner () + an1.getWidth ()); n++) {
+			int y = an1.getYCorner () - 1;
 			// make sure this edge isnt off the map && check if the point is in the other node
 			if (pointIsInBounds (n, y) && aStarNodeContainsTestPoint (an2, n, y)) {
 				return true;

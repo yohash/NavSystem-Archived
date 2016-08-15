@@ -3,9 +3,11 @@ using System.Collections;
 using System.Collections.Generic;
 
 
-public class NavSystem : MonoBehaviour {
+public class NavSystem : MonoBehaviour
+{
 	
-	public static NavSystem S;			// single-reference NavSystem
+	public static NavSystem S;
+	// single-reference NavSystem
 
 	public bool ____subSystems____;
 
@@ -20,72 +22,175 @@ public class NavSystem : MonoBehaviour {
 	public Map_Data_Package theMapData;
 
 	public GameObject STAPLEMESHGEN;
-	List<meshLineGenerator> MESHLINEGENs;
+	GameObject theAStarPath;
 
+	public Camera camera;
 
-	public int[] nodeDimensions;			// decreasing order size of AStar nodes
+	public Vector2 start, goal;
+	bool calculating = false;
+
+	public int[] nodeDimensions;
+	// decreasing order size of AStar nodes
 
 	public AStarGrid theAStarGrid;
 
-	public Vector2[,] get_dh() {return theMapData.getHeightGradientMap();}
-	public float[,] get_h() {return theMapData.getHeightMap();}
-	public float[,] get_g() {return theMapData.getDiscomfortMap();}
+	public Vector2[,] get_dh ()
+	{
+		return theMapData.getHeightGradientMap ();
+	}
+
+	public float[,] get_h ()
+	{
+		return theMapData.getHeightMap ();
+	}
+
+	public float[,] get_g ()
+	{
+		return theMapData.getDiscomfortMap ();
+	}
 
 
-	void Awake () {
+	void Awake ()
+	{
 		S = this;
 
 		theMapAnalyzer = GetComponentInChildren<mapAnalyzer> ();
 	}
 
-	void Start () {
+	void Start ()
+	{
 		// first thing is to initiate the mapAnalyzer and retrieve our map data
 		// The BIG gap being left here is 
 		// 		- LOADING MAPS AND MAP DATA
 		// calling MapAnalyzer is a temp fix
-		theMapAnalyzer.setMapParameters(
+		theMapAnalyzer.setMapParameters (
 			mapWidthX,
 			mapLengthZ,
 			terrainMaxWorldHeight,
 			terrainMaxHeightDifferential
 		);
-
-		theMapData = theMapAnalyzer.collectMapData();
+		theMapData = theMapAnalyzer.collectMapData ();
 
 		// next step is to send the Map Data to the A* "grid-ifier"
-		// this will 	(1) scan the discomfort (g) map and build connecting
-		//					series of boxes around it
-		//				(2) check all boxes for neighboring boxes and create
-		//					a list of node-neighbor-costs
-
-		// approach:  build an A*-grid class??
-		//		- then we can create an instance of it here and initiate
-		//		- if we need to rebuild the mesh, we can ask the class to 
-		//		  remake it (ie. when buildings are built)
-
-		theAStarGrid = new AStarGrid (theMapData.getHeightMap(), theMapData.getDiscomfortMap(), nodeDimensions);
+		// 		(1) scan the discomfort (g) map and build connecting series of boxes around it
+		//		(2) check all boxes for neighboring boxes and create a list of node-neighbor-costs
+		theAStarGrid = new AStarGrid (theMapData.getHeightMap (), theMapData.getDiscomfortMap (), nodeDimensions);
 
 
-		plotNodeCenterPoints();
+
+		// these are visual components for debugging
+		plotNodeCenterPoints ();
 		boxNodes ();
 		plotNodeNeighbors ();
+
+		theAStarPath = Instantiate (STAPLEMESHGEN) as GameObject;
 	}
 
-	void plotNodeCenterPoints() {
+
+	void Update() {
+		if (!calculating) {
+			if (Input.GetKey (KeyCode.Mouse0)) {
+				calculating = true;
+				Debug.Log ("setting start");
+				start = setAStarLocation ();
+				Debug.Log ("start set - calling AStar");
+				plotAStarOptimalPath ();
+				Debug.Log ("AStar call returned");
+				calculating = false;
+			}
+			if (Input.GetKey (KeyCode.Mouse1)) {
+				calculating = true;
+				Debug.Log ("setting goal");
+				goal = setAStarLocation ();
+				Debug.Log ("goal set");
+				calculating = false;
+			}
+		}
+	}
+
+	Vector3 setAStarLocation() {
+		RaycastHit hit;
+		Ray ray = camera.ScreenPointToRay(Input.mousePosition);
+
+		int mask = 1 << 8;
+		if (Physics.Raycast(ray, out hit, Mathf.Infinity, mask)) {
+			return new Vector2(hit.point.x,hit.point.z);
+		}
+		return Vector2.zero;
+	}
+
+	void plotAStarOptimalPath () {
+		Debug.Log ("initiating AStar Search, start = ("+start.x+","+start.y+"), goal = ("+goal.x+","+goal.y+")");
+		AStarSearch astar = new AStarSearch (theAStarGrid, start, goal);
+
+		Debug.Log ("AStar complete, start = ("+astar.start.x+","+astar.start.y+"), goal = ("+astar.goal.x+","+astar.goal.y+") - building optimal path, cameFrom.count="+astar.cameFrom.Count);
+		List<AStarNode> path = constructOptimalPath(astar, astar.start, astar.goal);
+
+		List<Vector3> pathLocations = new List<Vector3>();
+		List<Vector3> pathNormals = new List<Vector3>();
+
+		Vector3 pathData;
+
+		pathLocations.Add (new Vector3 (goal.x, theMapData.getHeightMap () [(int)goal.x,(int) goal.y], goal.y));
+		pathNormals.Add (Vector3.zero);
+
+		foreach (AStarNode l in path) {
+			pathData = new Vector3 (l.x, theMapData.getHeightMap () [(int)l.x, (int) l.y], l.y);
+			pathLocations.Add(pathData);
+			pathNormals.Add (Vector3.zero);
+		}
+
+		pathLocations.Add (new Vector3 (start.x, theMapData.getHeightMap () [(int)start.x,(int) start.y], start.y));
+		pathNormals.Add (Vector3.zero);
+
+		Debug.Log ("optimal path complete - sending mesh commands");
+		theAStarPath.GetComponent<meshLineGenerator>().setLinePoints(pathLocations.ToArray(), pathNormals.ToArray(),0.5f);
+		theAStarPath.GetComponent<meshLineGenerator>().generateMesh();
+
+		Debug.Log ("mesh commands complete - optimal line plotted");
+	}
+
+
+	List<AStarNode> constructOptimalPath(AStarSearch astar, AStarNode theStart, AStarNode theGoal) {
+		List<AStarNode> newPath = new List<AStarNode>();
+		AStarNode current = theGoal;
+
+		newPath.Add(theGoal);
+
+		int i = 0;
+
+		while(current != theStart) {
+			current = astar.cameFrom[current];
+			Debug.Log ("came from: ("+current.x+","+current.y+")");
+			newPath.Add(current);
+			i++;
+			if (i > 100)
+				break;
+		}
+		return newPath;
+	}
+
+
+	// ****************************************************************************************************
+	//			VISUALIZATION FUNCTIONS
+	// ****************************************************************************************************
+	void plotNodeCenterPoints ()
+	{
 		float highest = Mathf.Max (nodeDimensions);
 		float lowest = Mathf.Min (nodeDimensions);
 
 		for (int k = 0; k < theAStarGrid.nodes.Count; k++) {
-			float val = (((float)theAStarGrid.nodes [k].width - lowest) / (highest - lowest));
+			float val = (((float)theAStarGrid.nodes [k].getWidth() - lowest) / (highest - lowest));
 
-			float x = theAStarGrid.nodes [k].x + (theAStarGrid.nodes [k].width + 1) / 2f;
-			float y = theAStarGrid.nodes [k].y + (theAStarGrid.nodes [k].height + 1) / 2f;
+			float x = theAStarGrid.nodes [k].x ;
+			float y = theAStarGrid.nodes [k].y ;
 
 			Debug.DrawRay (new Vector3 (x, 10f, y), Vector3.down * 10f, rainbow (val), 10f);
 		}
 	}
 
-	void boxNodes() {
+	void boxNodes ()
+	{
 		Vector3[] points;
 		Vector3[] norms = new Vector3[]{ Vector3.up, Vector3.up, Vector3.up, Vector3.up, Vector3.up };
 		GameObject go;
@@ -94,10 +199,10 @@ public class NavSystem : MonoBehaviour {
 		float lowest = Mathf.Min (nodeDimensions);
 
 		for (int k = 0; k < theAStarGrid.nodes.Count; k++) {
-			int x = (theAStarGrid.nodes [k].x);
-			int y = (theAStarGrid.nodes [k].y);
-			int h = (theAStarGrid.nodes [k].height);
-			int w = (theAStarGrid.nodes [k].width);
+			int x = (theAStarGrid.nodes [k].getXCorner());
+			int y = (theAStarGrid.nodes [k].getYCorner());
+			int h = (theAStarGrid.nodes [k].getHeight());
+			int w = (theAStarGrid.nodes [k].getWidth());
 
 			float val = (((float)w - lowest) / (highest - lowest));
 
@@ -118,7 +223,8 @@ public class NavSystem : MonoBehaviour {
 		}
 	}
 
-	Color rainbow(float f) {
+	Color rainbow (float f)
+	{
 		float r, g, b;
 		r = Mathf.Abs (Mathf.Sin (Mathf.Deg2Rad * (f * 360f)));
 		g = Mathf.Abs (Mathf.Sin (Mathf.Deg2Rad * ((f + 0.333f) * 360f)));
@@ -127,30 +233,26 @@ public class NavSystem : MonoBehaviour {
 	}
 
 
-	void plotNodeNeighbors() {
-
+	void plotNodeNeighbors ()
+	{
 		List<AStarNode> nodes = theAStarGrid.nodes;
 
 		for (int i = 0; i < nodes.Count; i++) {
-
 			AStarNode an1 = nodes [i];
 
 			float thisY = Random.value + 8f;
 			Color c = new Color (Random.value, Random.value, Random.value);
 
-			//Debug.Log ("drawing node: " + i + "/"+nodes.Count+", dim=" + an1.dim+" at (x,y) = "+an1.x+" , "+an1.y);
-
 			List<AStarNeighbor> theNeibs = theAStarGrid.nodeNeighbors [an1];
 
 			for (int k = 0; k < theNeibs.Count; k++) {
-
 				AStarNeighbor an2 = theNeibs [k];
 
-				float xs = an1.x + (an1.width+1) / 2f;
-				float ys = an1.y + (an1.height+1) / 2f;
+				float xs = an1.x ;
+				float ys = an1.y ;
 
-				float xf = an2.theNode.x + (an2.theNode.width+1) / 2f;
-				float yf = an2.theNode.y + (an2.theNode.height+1) / 2f;
+				float xf = an2.theNode.x ;
+				float yf = an2.theNode.y ;
 
 				Vector3 start = new Vector3 (xs, thisY, ys);
 				Vector3 fin = new Vector3 (xf, thisY, yf);

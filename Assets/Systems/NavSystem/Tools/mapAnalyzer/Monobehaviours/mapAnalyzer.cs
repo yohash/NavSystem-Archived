@@ -155,7 +155,6 @@ public class mapAnalyzer : MonoBehaviour
 
 	Vector3[] getHeightAndNormalDataForPoint (float x, float z)
 	{
-
 		rayPoint = new Vector3 (x, _terrainMaxWorldHeight * 1.1f, z);
 		rayDir = new Vector3 (0, -_terrainMaxHeightDifferential, 0);
 
