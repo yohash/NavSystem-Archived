@@ -22,17 +22,13 @@ public class NavSystem : MonoBehaviour
 	public Map_Data_Package theMapData;
 
 	public GameObject STAPLEMESHGEN;
-	GameObject theAStarPath;
 
-	public Camera camera;
-
-	public Vector2 start, goal;
-	bool calculating = false;
 
 	public int[] nodeDimensions;
 	// decreasing order size of AStar nodes
 
 	public AStarGrid theAStarGrid;
+
 
 	public Vector2[,] get_dh ()
 	{
@@ -82,72 +78,27 @@ public class NavSystem : MonoBehaviour
 		plotNodeCenterPoints ();
 		boxNodes ();
 		plotNodeNeighbors ();
-
-		theAStarPath = Instantiate (STAPLEMESHGEN) as GameObject;
 	}
 
+	// ****************************************************************************************************
+	//			PUBLIC HANDLER FUNCTIONS
+	// ****************************************************************************************************
 
-	void Update() {
-		if (!calculating) {
-			if (Input.GetKey (KeyCode.Mouse0)) {
-				calculating = true;
-				Debug.Log ("setting start");
-				start = setAStarLocation ();
-				Debug.Log ("start set - calling AStar");
-				plotAStarOptimalPath ();
-				Debug.Log ("AStar call returned");
-				calculating = false;
-			}
-			if (Input.GetKey (KeyCode.Mouse1)) {
-				calculating = true;
-				Debug.Log ("setting goal");
-				goal = setAStarLocation ();
-				Debug.Log ("goal set");
-				calculating = false;
-			}
-		}
-	}
-
-	Vector3 setAStarLocation() {
-		RaycastHit hit;
-		Ray ray = camera.ScreenPointToRay(Input.mousePosition);
-
-		int mask = 1 << 8;
-		if (Physics.Raycast(ray, out hit, Mathf.Infinity, mask)) {
-			return new Vector2(hit.point.x,hit.point.z);
-		}
-		return Vector2.zero;
-	}
-
-	void plotAStarOptimalPath () {
-		Debug.Log ("initiating AStar Search, start = ("+start.x+","+start.y+"), goal = ("+goal.x+","+goal.y+")");
+	public List<Vector3> plotAStarOptimalPath (Vector3 start, Vector3 goal) {
 		AStarSearch astar = new AStarSearch (theAStarGrid, start, goal);
 
-		Debug.Log ("AStar complete, start = ("+astar.start.x+","+astar.start.y+"), goal = ("+astar.goal.x+","+astar.goal.y+") - building optimal path, cameFrom.count="+astar.cameFrom.Count);
 		List<AStarNode> path = constructOptimalPath(astar, astar.start, astar.goal);
-
 		List<Vector3> pathLocations = new List<Vector3>();
-		List<Vector3> pathNormals = new List<Vector3>();
-
 		Vector3 pathData;
 
 		pathLocations.Add (new Vector3 (goal.x, theMapData.getHeightMap () [(int)goal.x,(int) goal.y], goal.y));
-		pathNormals.Add (Vector3.zero);
-
 		foreach (AStarNode l in path) {
 			pathData = new Vector3 (l.x, theMapData.getHeightMap () [(int)l.x, (int) l.y], l.y);
 			pathLocations.Add(pathData);
-			pathNormals.Add (Vector3.zero);
 		}
-
 		pathLocations.Add (new Vector3 (start.x, theMapData.getHeightMap () [(int)start.x,(int) start.y], start.y));
-		pathNormals.Add (Vector3.zero);
 
-		Debug.Log ("optimal path complete - sending mesh commands");
-		theAStarPath.GetComponent<meshLineGenerator>().setLinePoints(pathLocations.ToArray(), pathNormals.ToArray(),0.5f);
-		theAStarPath.GetComponent<meshLineGenerator>().generateMesh();
-
-		Debug.Log ("mesh commands complete - optimal line plotted");
+		return pathLocations;
 	}
 
 
@@ -157,15 +108,10 @@ public class NavSystem : MonoBehaviour
 
 		newPath.Add(theGoal);
 
-		int i = 0;
-
 		while(current != theStart) {
 			current = astar.cameFrom[current];
 			Debug.Log ("came from: ("+current.x+","+current.y+")");
 			newPath.Add(current);
-			i++;
-			if (i > 100)
-				break;
 		}
 		return newPath;
 	}

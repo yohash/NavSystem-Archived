@@ -53,6 +53,9 @@ public class AStarSearch
 		}
 	}
 
+	// this finds the NEAREST NODES to the start and goal location
+	// this will likely need to be modified later to make a more robust node-finder that
+	// will not assign units 1-st node as a node on another height level (rounding error)
 	private AStarNode[] findNearestNodes (AStarGrid grid, Vector2 s, Vector2 g)
 	{
 		float nearestS = 9999f, nearestG = 9999f;		

@@ -91,6 +91,11 @@ public struct Map_Data_Package
 		return dht;
 	}
 
+	public float getHeightMap (int x, int y) {
+		return _h [x, y];
+	}
+
+
 	// default return value returns the entire map
 	public float[,] getHeightMap ()
 	{

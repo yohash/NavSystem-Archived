@@ -7,91 +7,6 @@ using System.Collections.Generic;
 // square search, it approximates the map with a grid that will be used
 // for AStar calculations.
 
-
-public struct AStarNode
-{
-	// this is essentially a (int) version of a Rect
-	// lower-left corner
-	private int xCorner, yCorner;
-	// width and height from lower-left corner
-	private int width, height;
-
-	// the CENTER x and y (these are floats)
-	public float x, y;
-
-	public AStarNode (int xLoc, int yLoc, int dimension)
-	{
-		xCorner = xLoc;
-		yCorner = yLoc;
-		width = dimension;
-		height = dimension;
-		x = (xCorner + (width+1) / 2f);
-		y = (yCorner + (height+1) / 2f);
-	}
-
-	public AStarNode (int xLoc, int yLoc, int w, int h)
-	{
-		xCorner = xLoc;
-		yCorner = yLoc;
-		width = w;
-		height = h;
-		x = (xCorner + (width+1) / 2f);
-		y = (yCorner + (height+1) / 2f);
-	}
-
-	public static bool operator == (AStarNode l1, AStarNode l2)
-	{
-		return((l1.getXCorner () == l2.getXCorner ()) &&
-		(l1.getYCorner () == l2.getYCorner ()) &&
-		(l1.getHeight () == l2.getHeight ()) &&
-		(l1.getWidth () == l2.getWidth ()) &&
-		(l1.x == l2.x) && (l1.y == l2.y)
-		);
-	}
-
-	public static bool Equals (AStarNode l1, AStarNode l2)
-	{
-		return(l1==l2);
-	}
-
-	public static bool operator != (AStarNode l1, AStarNode l2)
-	{
-		return(!(l1 == l2));
-	}
-
-	public int getXCorner ()
-	{
-		return xCorner;
-	}
-
-	public int getYCorner ()
-	{
-		return yCorner;
-	}
-
-	public int getHeight ()
-	{
-		return height;
-	}
-
-	public int getWidth ()
-	{
-		return width;
-	}
-}
-
-public struct AStarNeighbor
-{
-	public AStarNode theNode;
-	public float cost;
-
-	public AStarNeighbor (AStarNode n, float c)
-	{
-		theNode = n;
-		cost = c;
-	}
-}
-
 public struct AStarGrid
 {
 	public Dictionary<AStarNode,List<AStarNeighbor>> nodeNeighbors;
@@ -122,12 +37,9 @@ public struct AStarGrid
 			}
 		}
 
-		int num = 0;
 		// this portion fills empty holes and gaps by dimension by
 		// dimension expanding each node
 		foreach (AStarNode an in nodes) {
-			num++;
-			Debug.Log ("node #: " + num + "/" + nodes.Count + ", with index "+nodes.IndexOf (an));
 			expandNodeBoundaries (g, an);
 		}
 
