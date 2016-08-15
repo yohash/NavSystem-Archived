@@ -171,8 +171,6 @@ public class CC_UnitManager : MonoBehaviour
 
 		ycomp = averagedXTop * yAmountTop + averagedXBottom * yAmountBottom;
 
-//		print("the y-bounds: ""interp vect: "+(new Vector2(xcomp,ycomp)));
-
 		return new Vector2(xcomp,ycomp);
 	}
 

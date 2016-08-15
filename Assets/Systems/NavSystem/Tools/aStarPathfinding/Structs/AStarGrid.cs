@@ -195,7 +195,6 @@ public struct AStarGrid
 				}
 			}
 			if (isExtendable) {
-				int i = nodes.IndexOf (an);
 				int h = an.getHeight () + 1;
 				an = new AStarNode (an.getXCorner (), an.getYCorner (), an.getWidth (), h);
 			}

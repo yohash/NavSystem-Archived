@@ -23,27 +23,13 @@ public class NavSystem : MonoBehaviour
 
 	public GameObject STAPLEMESHGEN;
 
-
-	public int[] nodeDimensions;
 	// decreasing order size of AStar nodes
+	public int[] nodeDimensions;
 
 	public AStarGrid theAStarGrid;
 
 
-	public Vector2[,] get_dh ()
-	{
-		return theMapData.getHeightGradientMap ();
-	}
 
-	public float[,] get_h ()
-	{
-		return theMapData.getHeightMap ();
-	}
-
-	public float[,] get_g ()
-	{
-		return theMapData.getDiscomfortMap ();
-	}
 
 
 	void Awake ()
@@ -87,16 +73,20 @@ public class NavSystem : MonoBehaviour
 	public List<Vector3> plotAStarOptimalPath (Vector3 start, Vector3 goal) {
 		AStarSearch astar = new AStarSearch (theAStarGrid, start, goal);
 
-		List<AStarNode> path = constructOptimalPath(astar, astar.start, astar.goal);
-		List<Vector3> pathLocations = new List<Vector3>();
-		Vector3 pathData;
+		List<Vector3> pathLocations = new List<Vector3> ();
 
-		pathLocations.Add (new Vector3 (goal.x, theMapData.getHeightMap () [(int)goal.x,(int) goal.y], goal.y));
-		foreach (AStarNode l in path) {
-			pathData = new Vector3 (l.x, theMapData.getHeightMap () [(int)l.x, (int) l.y], l.y);
-			pathLocations.Add(pathData);
+		if (astar.cameFrom.ContainsKey (astar.goal)) {
+
+			List<AStarNode> path = constructOptimalPath (astar, astar.start, astar.goal);
+			Vector3 pathData;
+
+			pathLocations.Add (new Vector3 (goal.x, theMapData.getHeightMap (goal.x, goal.y), goal.y));
+			foreach (AStarNode l in path) {
+				pathData = new Vector3 (l.x, theMapData.getHeightMap (l.x, l.y), l.y);
+				pathLocations.Add (pathData);
+			}
+			pathLocations.Add (new Vector3 (start.x, theMapData.getHeightMap (start.x, start.y), start.y));
 		}
-		pathLocations.Add (new Vector3 (start.x, theMapData.getHeightMap () [(int)start.x,(int) start.y], start.y));
 
 		return pathLocations;
 	}
@@ -110,7 +100,6 @@ public class NavSystem : MonoBehaviour
 
 		while(current != theStart) {
 			current = astar.cameFrom[current];
-			Debug.Log ("came from: ("+current.x+","+current.y+")");
 			newPath.Add(current);
 		}
 		return newPath;

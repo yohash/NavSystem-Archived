@@ -91,8 +91,26 @@ public struct Map_Data_Package
 		return dht;
 	}
 
+	// return a single point
+	public float getHeightMap (float x, float y) {
+		return interpolateBetweenValues (x, y, _h);
+	}
+	public float getDiscomfortMap (float x, float y) {
+		return interpolateBetweenValues (x, y, _g);
+	}
+	public Vector2 getHeightGradientMap (float x, float y) {
+		return interpolateBetweenValues (x, y, _dh);
+	}
+
+	// return a single point
 	public float getHeightMap (int x, int y) {
 		return _h [x, y];
+	}
+	public float getDiscomfortMap (int x, int y) {
+		return _g [x, y];
+	}
+	public Vector2 getHeightGradientMap (int x, int y) {
+		return _dh [x, y];
 	}
 
 
@@ -101,12 +119,10 @@ public struct Map_Data_Package
 	{
 		return _h;
 	}
-
 	public float[,] getDiscomfortMap ()
 	{
 		return _g;
 	}
-
 	public Vector2[,] getHeightGradientMap ()
 	{
 		return _dh;
@@ -136,5 +152,98 @@ public struct Map_Data_Package
 		dy = Mathf.CeilToInt (r.y + r.height);
 
 		return new Rect (x, y, dx, dy);
+	}
+
+
+	// interpolation function taken from CC files...
+	// maybe should compile these things 
+	float interpolateBetweenValues(float x, float y, float[,] array) {
+		float xcomp;
+
+		int xl = array.GetLength(0);
+		int yl = array.GetLength(1);
+
+		int topLeftX = (int)Mathf.Floor(x);
+		int topLeftY = (int)Mathf.Floor(y);
+
+		float xAmountRight = x - topLeftX;
+		float xAmountLeft = 1.0f - xAmountRight;
+		float yAmountBottom = y - topLeftY;
+		float yAmountTop = 1.0f - yAmountBottom;
+
+		Vector4 valuesX = Vector4.zero;
+
+		if (isPointInsideArray(topLeftX,topLeftY,xl,yl))			{valuesX[0] = array[topLeftX, topLeftY];}
+		if (isPointInsideArray(topLeftX + 1, topLeftY,xl,yl)) 		{valuesX[1] = array[topLeftX + 1, topLeftY];}
+		if (isPointInsideArray(topLeftX, topLeftY + 1,xl,yl)) 		{valuesX[2] = array[topLeftX, topLeftY + 1];}
+		if (isPointInsideArray(topLeftX + 1, topLeftY + 1,xl,yl)) 	{valuesX[3] = array[topLeftX + 1, topLeftY + 1];}
+		for (int n=0; n<4; n++) {
+			if (float.IsNaN(valuesX[n])) {valuesX[n] = 0f;}
+			if (float.IsInfinity(valuesX[n])) {valuesX[n] = 0f;}
+		}
+
+		float averagedXTop = valuesX[0] * xAmountLeft + valuesX[1] * xAmountRight;
+		float averagedXBottom = valuesX[2] * xAmountLeft + valuesX[3] * xAmountRight;
+
+		xcomp = averagedXTop * yAmountTop + averagedXBottom * yAmountBottom;
+
+		return xcomp;
+	}
+
+	Vector2 interpolateBetweenValues(float x, float y, Vector2[,] array)
+	{
+		float xcomp,ycomp;
+
+		int xl = array.GetLength(0);
+		int yl = array.GetLength(1);
+
+		int topLeftX = (int)Mathf.Floor(x);
+		int topLeftY = (int)Mathf.Floor(y);
+
+		float xAmountRight = x - topLeftX;
+		float xAmountLeft = 1.0f - xAmountRight;
+		float yAmountBottom = y - topLeftY;
+		float yAmountTop = 1.0f - yAmountBottom;
+
+		Vector4 valuesX = Vector4.zero;
+
+		if (isPointInsideArray(topLeftX,topLeftY,xl,yl))			{valuesX[0] = array[topLeftX, topLeftY].x;}
+		if (isPointInsideArray(topLeftX + 1, topLeftY,xl,yl)) 		{valuesX[1] = array[topLeftX + 1, topLeftY].x;}
+		if (isPointInsideArray(topLeftX, topLeftY + 1,xl,yl)) 		{valuesX[2] = array[topLeftX, topLeftY + 1].x;}
+		if (isPointInsideArray(topLeftX + 1, topLeftY + 1,xl,yl)) 	{valuesX[3] = array[topLeftX + 1, topLeftY + 1].x;}
+		for (int n=0; n<4; n++) {
+			if (float.IsNaN(valuesX[n])) {valuesX[n] = 0f;}
+			if (float.IsInfinity(valuesX[n])) {valuesX[n] = 0f;}
+		}
+
+		float averagedXTop = valuesX[0] * xAmountLeft + valuesX[1] * xAmountRight;
+		float averagedXBottom = valuesX[2] * xAmountLeft + valuesX[3] * xAmountRight;
+
+		xcomp = averagedXTop * yAmountTop + averagedXBottom * yAmountBottom;
+
+		Vector4 valuesY = Vector4.zero;
+		if (isPointInsideArray(topLeftX,topLeftY,xl,yl))			{valuesY[0] = array[topLeftX, topLeftY].y;}
+		if (isPointInsideArray(topLeftX + 1, topLeftY,xl,yl)) 		{valuesY[1] = array[topLeftX + 1, topLeftY].y;}
+		if (isPointInsideArray(topLeftX, topLeftY + 1,xl,yl)) 		{valuesY[2] = array[topLeftX, topLeftY + 1].y;}
+		if (isPointInsideArray(topLeftX + 1, topLeftY + 1,xl,yl)) 	{valuesY[3] = array[topLeftX + 1, topLeftY + 1].y;}
+		for (int n=0; n<4; n++) {
+			if (float.IsNaN(valuesY[n])) {valuesY[n] = 0f;}
+			if (float.IsInfinity(valuesY[n])) {valuesY[n] = 0f;}
+		}
+
+		averagedXTop = valuesY[0] * xAmountLeft + valuesY[1] * xAmountRight;
+		averagedXBottom = valuesY[2] * xAmountLeft + valuesY[3] * xAmountRight;
+
+		ycomp = averagedXTop * yAmountTop + averagedXBottom * yAmountBottom;
+
+		return new Vector2(xcomp,ycomp);
+	}
+
+
+	bool isPointInsideArray(int x, int y, int xl, int yl) {
+		if (x<0 || x>xl-1 || y<0 || y>yl-1) {
+			return false;
+		}
+		return true;
 	}
 }

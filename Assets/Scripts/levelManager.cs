@@ -44,8 +44,11 @@ public class levelManager : MonoBehaviour {
 	void plotAStarPath() {
 		List<Vector3> pathLocations = NavSystem.S.plotAStarOptimalPath (start, goal);
 
-		pathMesh.GetComponent<meshLineGenerator>().setLinePoints(pathLocations.ToArray(), new Vector3[pathLocations.Count],0.5f);
-		pathMesh.GetComponent<meshLineGenerator>().generateMesh();
+		if (pathLocations.Count > 0) {
+
+			pathMesh.GetComponent<meshLineGenerator> ().setLinePoints (pathLocations.ToArray (), new Vector3[pathLocations.Count], 0.5f);
+			pathMesh.GetComponent<meshLineGenerator> ().generateMesh ();
+		}
 	}
 
 }

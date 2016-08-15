@@ -52,27 +52,22 @@ public struct AStarNode
 	{
 		return(l1==l2);
 	}
-
 	public static bool operator != (AStarNode l1, AStarNode l2)
 	{
 		return(!(l1 == l2));
 	}
-
 	public int getXCorner ()
 	{
 		return _xCorner;
 	}
-
 	public int getYCorner ()
 	{
 		return _yCorner;
 	}
-
 	public int getHeight ()
 	{
 		return _height;
 	}
-
 	public int getWidth ()
 	{
 		return _width;
