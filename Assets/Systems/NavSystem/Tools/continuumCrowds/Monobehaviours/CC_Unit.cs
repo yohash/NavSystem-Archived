@@ -8,7 +8,7 @@ public class CC_Unit : MonoBehaviour {
 	// private variables
 	public float _CC_Unit_maxSpeed = 5f;
 	public Vector2 _CC_Unit_velocity;
-	public Vector2 _CC_Unit_localPosition;		// hold position vs. transform as only local space is relevant
+	public Vector2 _CC_Unit_position;
 	public Rect _CC_Unit_localGoal;
 	Vector3 tmp3;
 
@@ -17,7 +17,7 @@ public class CC_Unit : MonoBehaviour {
 
 	// getters and setters
 	public Vector2 getVelocity() {return _CC_Unit_velocity;}
-	public Vector2 getLocalPosition() {return _CC_Unit_localPosition;}
+	public Vector2 getPosition() {return _CC_Unit_position;}
 	public Rect getLocalGoal() {return _CC_Unit_localGoal;}
 
 	public void setVelocity(Vector2 v) {_CC_Unit_velocity = v;}
@@ -39,7 +39,7 @@ public class CC_Unit : MonoBehaviour {
 		}
 		tr.position += tmp3 * Time.deltaTime;
 
-		_CC_Unit_localPosition = new Vector2(tr.position.x, tr.position.z);
+		_CC_Unit_position = new Vector2(tr.position.x, tr.position.z);
 	}
 
 	public void packageForCCSubmission(Vector2 worldSpace_anchor, Rect worldSpace_goal) {

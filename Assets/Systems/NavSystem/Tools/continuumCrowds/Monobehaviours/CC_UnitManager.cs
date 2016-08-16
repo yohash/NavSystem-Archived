@@ -90,7 +90,7 @@ public class CC_UnitManager : MonoBehaviour
 			
 //			foreach(CC_Unit_Goal_Group ccugg in My_CC_unit_goal_groups) {
 			foreach(CC_Unit ccu in My_CC_unit_goal_groups[ccGroup].units) {
-				newV = interpolateBetweenValues(ccu.getLocalPosition().x,ccu.getLocalPosition().y,vel_fields[ccGroup]);
+				newV = interpolateBetweenValues(ccu.getPosition().x,ccu.getPosition().y,vel_fields[ccGroup]);
 					ccu.setVelocity(newV);
 				}
 				index++;

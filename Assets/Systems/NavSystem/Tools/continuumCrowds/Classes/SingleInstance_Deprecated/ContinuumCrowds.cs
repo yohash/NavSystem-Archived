@@ -4,55 +4,9 @@ using System.Collections.Generic;
 
 using Priority_Queue;
 
-public class fastLocation : FastPriorityQueueNode
-{
-	public readonly int x, y;
-	public fastLocation(int x, int y)
-	{
-		this.x = x;
-		this.y = y;
-	}
-	public static bool operator ==(fastLocation l1, fastLocation l2) {
-		return((l1.x==l2.x) && (l1.y==l2.y));
-	}
-	public static bool Equals(fastLocation l1, fastLocation l2) {
-		return((l1.x==l2.x) && (l1.y==l2.y));
-	}
-	public static bool operator !=(fastLocation l1, fastLocation l2) {
-		return(!(l1==l2));
-	}
-}
-
-public struct CC_Unit_Goal_Group
-{
-	public Rect goal;
-	public List<CC_Unit> units;
-
-	public CC_Unit_Goal_Group (Rect r, List<CC_Unit> u)
-	{
-		this.goal = r;
-		this.units = u;
-	}
-}
-
-public struct CC_Map_Package
-{
-	public Vector2[,] dh;
-	public float[,] h;
-	public float[,] g;
-
-	public CC_Map_Package (Vector2[,] _dh, float[,] _h, float[,] _g)
-	{
-		this.dh = _dh;
-		this.h = _h;
-		this.g = _g;
-	}
-}
 
 public class ContinuumCrowds
 {
-	private float TIMESTAMP, dT, subTot;
-
 	// the Continuum Crowds fields
 	public float[,] rho;				// density field
 	public Vector2[,] vAve;				// average velocity field
@@ -105,8 +59,8 @@ public class ContinuumCrowds
 		theMap = map;
 		theUnitGoalGroups = unitGoals;
 
-		N = map.h.GetLength (0);
-		M = map.h.GetLength (1);
+		N = map.f.GetLength (0);
+		M = map.f.GetLength (1);
 
 		rho = new float[N, M];
 		vAve = new Vector2[N, M];
@@ -165,7 +119,7 @@ public class ContinuumCrowds
 
 	void computeDensityField (CC_Unit cc_u)
 	{
-		Vector2 cc_u_pos = cc_u.getLocalPosition ();
+		Vector2 cc_u_pos = cc_u.getPosition ();
 
 		linear1stOrderSplat (cc_u_pos.x, cc_u_pos.y, rho, rho_sc);
 		linear1stOrderSplat (cc_u_pos.x, cc_u_pos.y, gP, rho_sc);
@@ -202,11 +156,11 @@ public class ContinuumCrowds
 		Vector2 newLoc;
 		float sc;
 
-		Vector2 xprime = cc_u.getLocalPosition () + cc_u.getVelocity () * numSec;
-		float vfMag = Vector2.Distance (cc_u.getLocalPosition (), xprime);
+		Vector2 xprime = cc_u.getPosition () + cc_u.getVelocity () * numSec;
+		float vfMag = Vector2.Distance (cc_u.getPosition (), xprime);
 
 		for (int i = 1; i < vfMag; i++) {
-			newLoc = Vector2.MoveTowards (cc_u.getLocalPosition (), xprime, i);
+			newLoc = Vector2.MoveTowards (cc_u.getPosition (), xprime, i);
 			sc = (vfMag - i) / vfMag;				// inverse scale
 			linear1stOrderSplat (newLoc, gP, sc*gP_weight);
 		}
@@ -257,7 +211,7 @@ public class ContinuumCrowds
 		// i.e. if we look left (x=-1) we want -dhdx(x,y), because the gradient is assigned with a positive x
 		// 		therefore:		also, Vector.left = [-1,0]
 		//						Vector2.Dot(Vector.left, dh[x,y]) = -dhdx;
-		float hGradientInDirection = Vector2.Dot(direction, theMap.dh[x,y]) ;
+		float hGradientInDirection = Vector2.Dot(direction, Vector2.zero) ;
 		// calculate the speed field from the equation
 		return (f_speedMax + (hGradientInDirection - f_slopeMin) / (f_slopeMax - f_slopeMin) * (f_speedMin - f_speedMax) );
 	}
@@ -619,7 +573,7 @@ public class ContinuumCrowds
 		}
 		// check to make sure the point is not on a place of absolute discomfort (like inside a building)
 		// check to make sure the point is not in a place dis-allowed by terrain (slope)
-		if (theMap.g[x,y]==1) {return false;}
+//		if (theMap.g[x,y]==1) {return false;}
 
 		return true;
 	}

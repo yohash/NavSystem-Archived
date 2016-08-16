@@ -11,9 +11,11 @@ public class levelManager : MonoBehaviour {
 	public GameObject theAStarPath;
 	GameObject pathMesh;
 
+
 	void Start () {
 		camera = GetComponent<Camera> ();
 		pathMesh = Instantiate (theAStarPath) as GameObject;
+
 	}
 
 
@@ -45,7 +47,6 @@ public class levelManager : MonoBehaviour {
 		List<Vector3> pathLocations = NavSystem.S.plotAStarOptimalPath (start, goal);
 
 		if (pathLocations.Count > 0) {
-
 			pathMesh.GetComponent<meshLineGenerator> ().setLinePoints (pathLocations.ToArray (), new Vector3[pathLocations.Count], 0.5f);
 			pathMesh.GetComponent<meshLineGenerator> ().generateMesh ();
 		}

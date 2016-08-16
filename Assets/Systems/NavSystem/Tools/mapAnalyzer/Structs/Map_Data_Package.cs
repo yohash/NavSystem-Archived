@@ -32,9 +32,9 @@ public struct Map_Data_Package
 
 	public void overwriteDiscomfortData (Rect r)
 	{
-		// put code in here to change the global discomfort data
 		// intended for addition of buildings
 		// long term... can handle pathing with ground deformation?
+
 	}
 
 	// these getters containing an argument will return

@@ -21,26 +21,33 @@ public class NavSystem : MonoBehaviour
 
 	public Map_Data_Package theMapData;
 
-	public GameObject STAPLEMESHGEN;
 
+	public bool ____pathFinding____;
 	// decreasing order size of AStar nodes
 	public int[] nodeDimensions;
 
+	// the AStarGrid drives all our map-scale pathfinding
 	public AStarGrid theAStarGrid;
 
+	// the CCDynamicGlobalFields track tiles of moving units
+	// and provide the fields for the continuum crowds solution
+	public CCDynamicGlobalFields CCDyn;
+	public float CCTiles_UpdateFPS = 10f;
+	float CCTiles_UpdateTime;
 
-
+	// *****************************
+	// bullshit -- remove this later
+	public GameObject STAPLEMESHGEN;
 
 
 	void Awake ()
 	{
 		S = this;
-
-		theMapAnalyzer = GetComponentInChildren<mapAnalyzer> ();
 	}
 
 	void Start ()
 	{
+		theMapAnalyzer = GetComponentInChildren<mapAnalyzer> ();
 		// first thing is to initiate the mapAnalyzer and retrieve our map data
 		// The BIG gap being left here is 
 		// 		- LOADING MAPS AND MAP DATA
@@ -59,6 +66,11 @@ public class NavSystem : MonoBehaviour
 		theAStarGrid = new AStarGrid (theMapData.getHeightMap (), theMapData.getDiscomfortMap (), nodeDimensions);
 
 
+		// next, we need to initiate the Continuum Crowds Dynamic Global Tile manager
+		CCDyn = new CCDynamicGlobalFields();
+		CCDyn.initiateTiles (mapWidthX, mapLengthZ, theMapData.getDiscomfortMap (), theMapData.getHeightGradientMap ());
+		CCTiles_UpdateTime = 1f / CCTiles_UpdateFPS;
+		updateCCTiles ();
 
 		// these are visual components for debugging
 		plotNodeCenterPoints ();
@@ -66,9 +78,20 @@ public class NavSystem : MonoBehaviour
 		plotNodeNeighbors ();
 	}
 
+	IEnumerator updateCCTiles() {
+		CCDyn.updateTiles ();
+		yield return new WaitForSeconds (CCTiles_UpdateTime);
+	}
+
 	// ****************************************************************************************************
 	//			PUBLIC HANDLER FUNCTIONS
 	// ****************************************************************************************************
+
+	public Vector2[,] computeCCVelocityField(Rect solutionSpace, List<Location> theGoal) {
+		CC_Map_Package tempMap = CCDyn.buildCCMapPackage (solutionSpace);
+		CCEikonalSolver cce = new CCEikonalSolver (tempMap, theGoal);
+		return (cce.v);
+	}
 
 	public List<Vector3> plotAStarOptimalPath (Vector3 start, Vector3 goal) {
 		AStarSearch astar = new AStarSearch (theAStarGrid, start, goal);
@@ -76,7 +99,6 @@ public class NavSystem : MonoBehaviour
 		List<Vector3> pathLocations = new List<Vector3> ();
 
 		if (astar.cameFrom.ContainsKey (astar.goal)) {
-
 			List<AStarNode> path = constructOptimalPath (astar, astar.start, astar.goal);
 			Vector3 pathData;
 
@@ -87,17 +109,13 @@ public class NavSystem : MonoBehaviour
 			}
 			pathLocations.Add (new Vector3 (start.x, theMapData.getHeightMap (start.x, start.y), start.y));
 		}
-
 		return pathLocations;
 	}
-
 
 	List<AStarNode> constructOptimalPath(AStarSearch astar, AStarNode theStart, AStarNode theGoal) {
 		List<AStarNode> newPath = new List<AStarNode>();
 		AStarNode current = theGoal;
-
 		newPath.Add(theGoal);
-
 		while(current != theStart) {
 			current = astar.cameFrom[current];
 			newPath.Add(current);
