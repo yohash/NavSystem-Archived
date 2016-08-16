@@ -74,7 +74,6 @@ public class CCEikonalSolver {
 	}
 
 	void EikonalSolver (CC_Map_Package fields, List<Location> goalLocs) {
-
 		// start by assigning all values of potential a huge number to in-effect label them 'far'
 		for (int n=0; n<N; n++) {
 			for (int m=0; m<M; m++) {

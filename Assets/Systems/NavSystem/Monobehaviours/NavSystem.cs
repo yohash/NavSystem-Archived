@@ -33,12 +33,17 @@ public class NavSystem : MonoBehaviour
 	// and provide the fields for the continuum crowds solution
 	public CCDynamicGlobalFields CCDyn;
 	public float CCTiles_UpdateFPS = 10f;
-	float CCTiles_UpdateTime;
+	public float CCTiles_UpdateTime;
 
 	// *****************************
 	// bullshit -- remove this later
-	public GameObject STAPLEMESHGEN;
+	public GameObject MESHGEN_STAPLE;
+	public GameObject TILEMAP_STAPLE;
+	GameObject newTileMap;
 
+	public GameObject aCCU;
+
+	CCEikonalSolver cce;
 
 	void Awake ()
 	{
@@ -47,11 +52,11 @@ public class NavSystem : MonoBehaviour
 
 	void Start ()
 	{
-		theMapAnalyzer = GetComponentInChildren<mapAnalyzer> ();
 		// first thing is to initiate the mapAnalyzer and retrieve our map data
 		// The BIG gap being left here is 
 		// 		- LOADING MAPS AND MAP DATA
 		// calling MapAnalyzer is a temp fix
+		theMapAnalyzer = GetComponentInChildren<mapAnalyzer> ();
 		theMapAnalyzer.setMapParameters (
 			mapWidthX,
 			mapLengthZ,
@@ -65,22 +70,68 @@ public class NavSystem : MonoBehaviour
 		//		(2) check all boxes for neighboring boxes and create a list of node-neighbor-costs
 		theAStarGrid = new AStarGrid (theMapData.getHeightMap (), theMapData.getDiscomfortMap (), nodeDimensions);
 
-
-		// next, we need to initiate the Continuum Crowds Dynamic Global Tile manager
+		// next, we need to initiate the Continuum Crowds Dynamic Global Tile manager to
+		// instantiate all its tiles, and fill them with their core data
 		CCDyn = new CCDynamicGlobalFields();
-		CCDyn.initiateTiles (mapWidthX, mapLengthZ, theMapData.getDiscomfortMap (), theMapData.getHeightGradientMap ());
+		CCDyn.setTileSize (mapWidthX);
+		CCDyn.addNewCCUnit (aCCU.GetComponent<CC_Unit>());
+		if (!CCDyn.initiateTiles (mapWidthX, mapLengthZ, theMapData.getDiscomfortMap (), theMapData.getHeightGradientMap ())) {
+			Debug.Log ("CRITICAL ERROR -- tileSize-MapDimensions MISMATCH");
+		}
 		CCTiles_UpdateTime = 1f / CCTiles_UpdateFPS;
-		updateCCTiles ();
+		CCDyn.updateTiles ();
+		StartCoroutine ("updateCCTiles");
 
-		// these are visual components for debugging
-		plotNodeCenterPoints ();
-		boxNodes ();
-		plotNodeNeighbors ();
+
+
+
+
+
+
+		// **** these are visual components for debugging
+		newTileMap = Instantiate (TILEMAP_STAPLE) as GameObject;
+//		plotTileFields();
+		Invoke ("performEikonalShit", 2f);
+//		theMapAnalyzer.printOutMatrix (cce.Phi);
+		// plotNodeCenterPoints ();
+//		 boxNodes ();
+		// plotNodeNeighbors ();
+	}
+
+	void performEikonalShit(){
+
+		List<Location> goalies = new List<Location> ();
+		goalies.Add (new Location (37, 42));
+		cce = GIMME_DA_EIKONAL_SOLUTION (new Rect (0, 0, 50, 50), goalies); 
+
+		printMat (normalizeMatrix( cce.Phi));
+
+		plotTileFields ();
+	}
+
+	void printMat(float[,] v ) {
+		string s;
+		Debug.Log ("NEW MAT");
+		for (int i = 0; i < v.GetLength (0); i++) {
+			s = "";
+			for (int k = 0; k < v.GetLength (0); k++) {
+				s += v [i, k];
+				s += " ";
+			}
+			Debug.Log (s);
+		}
 	}
 
 	IEnumerator updateCCTiles() {
-		CCDyn.updateTiles ();
-		yield return new WaitForSeconds (CCTiles_UpdateTime);
+		while (true) {
+			CCDyn.updateTiles ();
+
+			if (PLOTTING_TILE_FIELDS) {
+//				plotTileFields();
+			}
+
+			yield return new WaitForSeconds (CCTiles_UpdateTime);
+		}
 	}
 
 	// ****************************************************************************************************
@@ -91,6 +142,12 @@ public class NavSystem : MonoBehaviour
 		CC_Map_Package tempMap = CCDyn.buildCCMapPackage (solutionSpace);
 		CCEikonalSolver cce = new CCEikonalSolver (tempMap, theGoal);
 		return (cce.v);
+	}
+
+	public CCEikonalSolver GIMME_DA_EIKONAL_SOLUTION(Rect solutionSpace, List<Location> theGoal) {
+		CC_Map_Package tempMap = CCDyn.buildCCMapPackage (solutionSpace);
+		CCEikonalSolver cce = new CCEikonalSolver (tempMap, theGoal);
+		return (cce);
 	}
 
 	public List<Vector3> plotAStarOptimalPath (Vector3 start, Vector3 goal) {
@@ -127,6 +184,33 @@ public class NavSystem : MonoBehaviour
 	// ****************************************************************************************************
 	//			VISUALIZATION FUNCTIONS
 	// ****************************************************************************************************
+	bool PLOTTING_TILE_FIELDS = false;
+
+	public Texture2D hmap;
+
+	void plotTileFields() {
+		PLOTTING_TILE_FIELDS = true;
+
+		newTileMap.GetComponent<TileMap> ().BuildMesh (theMapData.getHeightMap ());
+
+		hmap = new Texture2D (mapWidthX, mapLengthZ);
+
+		float[,] map = normalizeMatrix (cce.Phi);
+
+		foreach (CC_Tile cct in CCDyn.getTiles()) {
+			for (int n=0; n<mapWidthX; n++) {
+				for (int m=0; m<mapLengthZ; m++) {
+					Color c = new Color(Mathf.Abs(map[n,m]), 0f, 0f, 0.5f);
+					hmap.SetPixel (n, m, c);
+				}
+			}
+			hmap.Apply ();
+			hmap.filterMode = FilterMode.Point;
+
+			newTileMap.GetComponent<TileMap> ().BuildTexture (hmap);
+		}
+	}
+
 	void plotNodeCenterPoints ()
 	{
 		float highest = Mathf.Max (nodeDimensions);
@@ -159,7 +243,7 @@ public class NavSystem : MonoBehaviour
 
 			float val = (((float)w - lowest) / (highest - lowest));
 
-			go = Instantiate (STAPLEMESHGEN) as GameObject;
+			go = Instantiate (MESHGEN_STAPLE) as GameObject;
 			Vector3 pt1 = new Vector3 (x, theMapData.getHeightMap () [x, y], y);
 			Vector3 pt2 = new Vector3 (x + w + 1, theMapData.getHeightMap () [x + w, y], y);
 			Vector3 pt3 = new Vector3 (x + w + 1, theMapData.getHeightMap () [x + w, y + h], y + h + 1);
@@ -214,5 +298,25 @@ public class NavSystem : MonoBehaviour
 				Debug.DrawRay (start, dir, c, 10f);
 			}
 		}
+	}
+
+	float[,] normalizeMatrix(float[,] f) {
+		float maxV = 0f;
+
+		for (int n=0; n<f.GetLength(0); n++) {
+			for (int m=0; m<f.GetLength(1); m++) {
+				if (!float.IsInfinity(f[n,m]) && !float.IsNaN(f[n,m]) &&  f [n, m] > maxV) {
+					maxV = f [n, m];
+				}
+			}
+		}
+
+		for (int n=0; n<f.GetLength(0); n++) {
+			for (int m=0; m<f.GetLength(1); m++) {
+				f [n, m] /= maxV;
+			}
+		}
+
+		return f;
 	}
 }
