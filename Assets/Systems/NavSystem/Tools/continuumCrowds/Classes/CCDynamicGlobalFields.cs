@@ -20,21 +20,6 @@ public class CCDynamicGlobalFields
 	// ******************************************************************************************
 	// 				PUBLIC ACCESSORS and CONSTRUCTORS
 	// ******************************************************************************************
-
-	// 00000000000000000000000000000000000000000000000
-	// REMOVE THIS ONE LATER
-	public List<CC_Tile> getTiles() {
-		List<CC_Tile> ccReturn = new List<CC_Tile> ();
-		foreach (CC_Tile cct in _tiles.Values) {
-			ccReturn.Add (cct);
-		}
-		return ccReturn;
-	}
-	public List<CC_Unit> getUnits() {
-		return _units;
-	}
-	// 00000000000000000000000000000000000000000000000
-
 	public CCDynamicGlobalFields ()
 	{
 		_tiles = new Dictionary<Location, CC_Tile> ();
@@ -89,7 +74,7 @@ public class CCDynamicGlobalFields
 	{	// first, clear the tiles
 		foreach (CC_Tile cct in _tiles.Values) {
 //			if (cct.UPDATE_TILE) {
-				cct.resetTile ();
+			cct.resetTile ();
 //			}
 		}
 		// update the unit specific elements (rho, vAve, g_P)
@@ -101,17 +86,17 @@ public class CCDynamicGlobalFields
 		}
 		// these next values are derived from rho, vAve, and g_P, so we simply iterate
 		// through the tiles and ONLY update the ones that have had their values changed
-		int i=0;
+		int i = 0;
 		foreach (CC_Tile cct in _tiles.Values) {
 			//if (cct.UPDATE_TILE) {
-				// (3) 	now that the velocity field and density fields are implemented,
-				// 		divide the velocity by density to get average velocity field
-				computeAverageVelocityField (cct);
-				// (4)	now that the average velocity field is computed, and the density
-				// 		field is in place, we calculate the speed field, f
+			// (3) 	now that the velocity field and density fields are implemented,
+			// 		divide the velocity by density to get average velocity field
+			computeAverageVelocityField (cct);
+			// (4)	now that the average velocity field is computed, and the density
+			// 		field is in place, we calculate the speed field, f
 			computeSpeedField (cct);
-				// (5) 	the cost field depends only on f and g, so it can be computed in its
-				//		entirety now as well
+			// (5) 	the cost field depends only on f and g, so it can be computed in its
+			//		entirety now as well
 			computeCostField (cct);
 			//}
 		}
@@ -125,6 +110,14 @@ public class CCDynamicGlobalFields
 	public void removeCCUnit (CC_Unit ccu)
 	{
 		_units.Remove (ccu);
+	}
+
+	public void overwriteDiscomfortDataOnTiles (int globalX, int globalY, float[,] gm) {
+		for (int xI = 0; xI < (gm.GetLength(0)); xI++) {
+			for (int yI = 0; yI < (gm.GetLength(1)); yI++) {
+				writeDataToPoint_g (xI + globalX, yI + globalY, gm [xI, yI]);
+			}
+		}
 	}
 
 	public CC_Map_Package buildCCMapPackage (Rect r) {
@@ -327,12 +320,10 @@ public class CCDynamicGlobalFields
 		int xGlobalInto = cct.myLoc.x + xLocalInto;
 		int yGlobalInto = cct.myLoc.y + yLocalInto;
 
-
 		// if we're looking in an invalid direction, dont store this value
 		if (!isPointValid (xGlobalInto, yGlobalInto) || (cct.f [tileX, tileY] [d] == 0)) {
 			return Mathf.Infinity;
 		}
-
 
 		// test to see if the point we're looking INTO is in another tile, and if so, pull it
 		float gP;
@@ -407,7 +398,6 @@ public class CCDynamicGlobalFields
 
 		return true;
 	}
-
 
 	// ******************************************************************************************
 	// 				functions used for reading and writing to tiles

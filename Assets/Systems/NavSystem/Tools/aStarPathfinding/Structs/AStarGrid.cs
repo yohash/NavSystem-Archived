@@ -238,7 +238,9 @@ public struct AStarGrid
 		// (2)  if (point is inside another node) nodes are neighbors
 
 		// check to the right - scan over the height of the node
-		for (int m = an1.getYCorner (); m <= (an1.getYCorner () + an1.getHeight ()); m++) {
+		int ybase = an1.getYCorner () - 1;
+		int ytop = (an1.getYCorner () + an1.getHeight ()) + 1;
+		for (int m = ybase; m <= ytop; m++) {
 			int x = an1.getXCorner () + an1.getWidth () + 1;
 			// make sure this edge isnt off the map && check if the point is in the other node
 			if (pointIsInBounds (x, m) && aStarNodeContainsTestPoint (an2, x, m)) {
@@ -246,14 +248,17 @@ public struct AStarGrid
 			}
 		}
 		// check to the left - scan over the height of the node
-		for (int m = an1.getYCorner (); m <= (an1.getYCorner () + an1.getHeight ()); m++) {
+		for (int m = ybase; m <= ytop; m++) {
 			int x = an1.getXCorner () - 1;
 			// make sure this edge isnt off the map && check if the point is in the other node
 			if (pointIsInBounds (x, m) && aStarNodeContainsTestPoint (an2, x, m)) {
 				return true;
 			}
 		}
+
 		// check up - scan over the width of the node
+		int xbase = an1.getXCorner () - 1;
+		int xtop = (an1.getXCorner () + an1.getWidth ()) + 1;
 		for (int n = an1.getXCorner (); n <= (an1.getXCorner () + an1.getWidth ()); n++) {
 			int y = an1.getYCorner () + an1.getHeight () + 1;
 			// make sure this edge isnt off the map && check if the point is in the other node

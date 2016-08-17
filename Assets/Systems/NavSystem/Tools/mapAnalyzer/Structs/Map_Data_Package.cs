@@ -30,11 +30,21 @@ public struct Map_Data_Package
 		this._ydim = _h.GetLength (1);
 	}
 
-	public void overwriteDiscomfortData (Rect r)
+	public void overwriteDiscomfortData (int globalX, int globalY, float[,] gm)
 	{
 		// intended for addition of buildings
+		for (int xI = 0; xI < (gm.GetLength(0)); xI++) {
+			for (int yI = 0; yI < (gm.GetLength(1)); yI++) {
+				if (pointIsValid (new Vector2(xI + globalX, yI + globalY))) {
+					_g [xI + globalX, yI + globalY] = gm [xI, yI];
+				}
+			}
+		}
 		// long term... can handle pathing with ground deformation?
-
+		// after changing what g "means", can add fluid values from 0-1 to produce 
+		// dynamic unit perference for moving on particular regions
+		// e.g. Battle Manager can build a large, arching path that our units will desire to follow
+		//		using splines/beziers so that AStar Grid following looks smoother
 	}
 
 	// these getters containing an argument will return

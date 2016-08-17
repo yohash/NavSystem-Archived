@@ -11,11 +11,21 @@ public class levelManager : MonoBehaviour {
 	public GameObject theAStarPath;
 	GameObject pathMesh;
 
+	public NavSystem _NavSystem;
+
+	public int _mapX, _mapZ;
 
 	void Start () {
 		camera = GetComponent<Camera> ();
 		pathMesh = Instantiate (theAStarPath) as GameObject;
 
+		_NavSystem = NavSystem.S;
+		_NavSystem.Initialize_NavSystem ();
+
+		_mapX = _NavSystem.getMapWidthX();
+		_mapZ = _NavSystem.getMapLengthZ();
+
+		Invoke ("delayedCommands", 2f);
 	}
 
 
@@ -29,6 +39,18 @@ public class levelManager : MonoBehaviour {
 		}
 	}
 
+
+	void delayedCommands () {
+
+		Rect sol = new Rect (0, 0, _mapX, _mapZ);
+		Location l = new Location (35, 35);
+		List<Location> locs = new List<Location> ();
+		locs.Add (l);
+
+		CCEikonalSolver cce = _NavSystem.DEBUG_EIKONAL_computeCCVelocityField (sol, locs);
+		_NavSystem._VISUAL_DEBUG_boxNodes ();
+		_NavSystem._VISUAL_DEBUG_plotTileFields (cce.Phi);
+	}
 
 
 	Vector3 setAStarLocation() {
