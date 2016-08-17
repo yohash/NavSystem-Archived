@@ -36,14 +36,12 @@ public class NavSystem : MonoBehaviour
 	public int tileSize;
 
 
-
 	public int getMapWidthX() {
 		return mapWidthX;
 	}
 	public int getMapLengthZ() {
 		return mapLengthZ;
 	}
-
 
 	// 00000000000000000000000000000
 	// 00000000000000000000000000000
@@ -102,7 +100,7 @@ public class NavSystem : MonoBehaviour
 
 	// ****************************************************************************************************
 	//		PUBLIC HANDLER FUNCTIONS
-	// ****************************************************************************************************
+	// ************************************
 	// 		REQUEST a ContinuumCrowds velocity field solution for a given region
 	public Vector2[,] computeCCVelocityField(Rect solutionSpace, List<Location> theGoal) {
 		CC_Map_Package tempMap = theCCDynamicFieldManager.buildCCMapPackage (solutionSpace);
@@ -110,7 +108,7 @@ public class NavSystem : MonoBehaviour
 		return (cce.v);
 	}
 
-	public CCEikonalSolver DEBUG_EIKONAL_computeCCVelocityField(Rect solutionSpace, List<Location> theGoal) {
+	public CCEikonalSolver _DEBUG_EIKONAL_computeCCVelocityField(Rect solutionSpace, List<Location> theGoal) {
 		CC_Map_Package tempMap = theCCDynamicFieldManager.buildCCMapPackage (solutionSpace);
 		CCEikonalSolver cce = new CCEikonalSolver (tempMap, theGoal);
 		return (cce);
@@ -169,7 +167,7 @@ public class NavSystem : MonoBehaviour
 
 	public Texture2D hmap;
 
-	public void _VISUAL_DEBUG_plotTileFields(float[,] map) {
+	public void _DEBUG_VISUAL_plotTileFields(float[,] map) {
 		PLOTTING_TILE_FIELDS = true;
 
 		newTileMap = Instantiate (TILEMAP_STAPLE) as GameObject;
@@ -191,7 +189,7 @@ public class NavSystem : MonoBehaviour
 		newTileMap.GetComponent<TileMap> ().BuildTexture (hmap);
 	}
 
-	public void _VISUAL_DEBUG_plotNodeCenterPoints ()
+	public void _DEBUG_VISUAL_plotNodeCenterPoints ()
 	{
 		float highest = Mathf.Max (nodeDimensions);
 		float lowest = Mathf.Min (nodeDimensions);
@@ -206,7 +204,7 @@ public class NavSystem : MonoBehaviour
 		}
 	}
 
-	public void _VISUAL_DEBUG_boxNodes ()
+	public void _DEBUG_VISUAL_boxAStarNodes  ()
 	{
 		Vector3[] points;
 		Vector3[] norms = new Vector3[]{ Vector3.up, Vector3.up, Vector3.up, Vector3.up, Vector3.up };

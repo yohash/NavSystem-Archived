@@ -13,7 +13,7 @@ public class levelManager : MonoBehaviour {
 
 	public NavSystem _NavSystem;
 
-	public int _mapX, _mapZ;
+	int _mapX, _mapZ;
 
 	void Start () {
 		camera = GetComponent<Camera> ();
@@ -41,15 +41,14 @@ public class levelManager : MonoBehaviour {
 
 
 	void delayedCommands () {
-
 		Rect sol = new Rect (0, 0, _mapX, _mapZ);
 		Location l = new Location (35, 35);
 		List<Location> locs = new List<Location> ();
 		locs.Add (l);
 
-		CCEikonalSolver cce = _NavSystem.DEBUG_EIKONAL_computeCCVelocityField (sol, locs);
-		_NavSystem._VISUAL_DEBUG_boxNodes ();
-		_NavSystem._VISUAL_DEBUG_plotTileFields (cce.Phi);
+		CCEikonalSolver cce = _NavSystem._DEBUG_EIKONAL_computeCCVelocityField (sol, locs);
+		_NavSystem._DEBUG_VISUAL_boxAStarNodes ();
+		_NavSystem._DEBUG_VISUAL_plotTileFields (cce.Phi);
 	}
 
 
