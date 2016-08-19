@@ -65,7 +65,12 @@ public class CCEikonalSolver {
 
 		considered = new FastPriorityQueue <fastLocation> (N*M);
 
+		// calculate potential field (Eikonal solver)
 		computePotentialField(fields, goalLocs) ;
+		// calculate the gradient
+		calculatePotentialGradientAndNormalize();
+		// calculate velocity field
+		calculateVelocityField();
 	}
 
 
@@ -87,11 +92,12 @@ public class CCEikonalSolver {
 		// algorithm loop
 		fastLocation loc;
 		foreach (Location l in goalLocs) {
-			Phi[l.x,l.y] = 0f;
-			loc = new fastLocation(l.x,l.y);
-
-			markGoal(loc);
-			considered.Enqueue (loc, 0f);
+			if (isPointValid (l.x, l.y)) {
+				Phi [l.x, l.y] = 0f;
+				loc = new fastLocation (l.x, l.y);
+				markGoal (loc);
+				considered.Enqueue (loc, 0f);
+			}
 		}
 
 		// THE EIKONAL UPDATE LOOP
@@ -296,7 +302,7 @@ public class CCEikonalSolver {
 					vy = -f[i,k][1] * dPhi[i,k].y;
 				}
 
-				v[i,k] = new Vector2(vx,vy);
+				v[i,k] = (new Vector2(vx,vy));
 			}
 		}
 	}

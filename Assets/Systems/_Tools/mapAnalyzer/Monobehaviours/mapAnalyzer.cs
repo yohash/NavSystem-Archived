@@ -191,7 +191,7 @@ public class mapAnalyzer : MonoBehaviour
 	// *****************************************************************************************************************
 	// 		ADMIN and DEBUG functions
 	// *****************************************************************************************************************
-	public void printOutMatrix (float[,] f)
+	public void printOutMatrix (Vector2[,] f)
 	{
 		string s;
 		for (int n = 0; n < f.GetLength (0); n++) {

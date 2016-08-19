@@ -22,10 +22,10 @@ public class TileMap : MonoBehaviour {
 		mesh_renderer.sharedMaterials [0].mainTexture = tex;
 	}
 
-	public void BuildMesh (float[,] mat) {
+	public void BuildMesh (Vector2 corner, float[,] mat) {
 
-		mapX = mat.GetLength (0);
-		mapZ = mat.GetLength (1);
+		mapX = mat.GetLength (0)-1;
+		mapZ = mat.GetLength (1)-1;
 
 		int numTiles = mapX * mapZ;
 		int numTris = numTiles * 2;
@@ -45,7 +45,6 @@ public class TileMap : MonoBehaviour {
 		for (z = 0; z < vSize_z; z++) {
 			for (x = 0; x < vSize_x; x++) {
 				float h;
-				//Debug.Log ("x,z: " + x + "," + z);
 				if (z > mapZ - 1 && x > mapX - 1) {
 					h = mat [x - 1, z - 1];
 				} else if (z > mapZ - 1) {
@@ -55,9 +54,9 @@ public class TileMap : MonoBehaviour {
 				} else {					
 					h = mat [x, z];
 				}
-				vertices [z * vSize_x + x] = new Vector3 (x * tileSize, h+.1f, z * tileSize);
+				vertices [z * vSize_x + x] = new Vector3 (corner.x + x * tileSize, h+.1f, corner.y + z * tileSize);
 				normals [z * vSize_x + x] = Vector3.up;
-				uv [z * vSize_z + x] = new Vector2 ((float)x / vSize_x, (float)z / vSize_z);
+				uv [z * vSize_x + x] = new Vector2 ((float)x / vSize_x, (float)z / vSize_z);
 			}
 		}
 

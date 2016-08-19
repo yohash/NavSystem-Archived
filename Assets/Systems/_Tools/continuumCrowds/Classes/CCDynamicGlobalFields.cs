@@ -2,10 +2,23 @@
 using System.Collections;
 using System.Collections.Generic;
 
+class LocationComparator : IEqualityComparer<Location> {
+	public bool Equals(Location x, Location y) {
+		return x == y;
+	}
+	public int GetHashCode(Location l) {
+		int hash = 17;
+		hash = (31 * hash) + l.x;
+		hash = (31 * hash) + l.y;
+		return hash;
+	}
+}
 
 public class CCDynamicGlobalFields
 {
 	public int tileSize = 20;
+
+	public float DEBUGGING_TIMER;
 
 	// the meat of the CC Dynamic Global Fields computer
 	private Dictionary<Location, CC_Tile> _tiles;
@@ -22,8 +35,10 @@ public class CCDynamicGlobalFields
 	// ******************************************************************************************
 	public CCDynamicGlobalFields ()
 	{
-		_tiles = new Dictionary<Location, CC_Tile> ();
+		_tiles = new Dictionary<Location, CC_Tile> (new LocationComparator());
 		_units = new List<CC_Unit> ();
+
+		DEBUGGING_TIMER = 0f;
 	}
 
 	public void setTileSize (int s) {
@@ -62,6 +77,7 @@ public class CCDynamicGlobalFields
 			// of fields: f, C
 			for (int x = 0; x < _mapX; x++) {
 				for (int y = 0; y < _mapY; y++) {
+					Debug.Log ("writing to " + x + "," + y);
 					writeDataToPoint_g (x, y, g [x, y]);
 					writeDataToPoint_dh (x, y, dh [x, y]);
 				}
@@ -71,35 +87,52 @@ public class CCDynamicGlobalFields
 	}
 
 	public void updateTiles ()
-	{	// first, clear the tiles
+	{	
+		float tick, tReset=0f, trho=0f, tgP=0f, tvAve=0f, tf=0f, tC=0f;
+		DEBUGGING_TIMER = 0f;
+
+		// first, clear the tiles
 		foreach (CC_Tile cct in _tiles.Values) {
 //			if (cct.UPDATE_TILE) {
+			tick = Time.realtimeSinceStartup;
 			cct.resetTile ();
+			tReset += (Time.realtimeSinceStartup - tick);
 //			}
 		}
 		// update the unit specific elements (rho, vAve, g_P)
 		foreach (CC_Unit ccu in _units) {
 			// (1) density field and velocity
-			computeDensityField (ccu); 		
+			tick = Time.realtimeSinceStartup;
+			computeDensityField (ccu); 	
+			trho += (Time.realtimeSinceStartup - tick);	
 			// (2) predictive discomfort field
+			tick = Time.realtimeSinceStartup;
 			applyPredictiveDiscomfort (CCvals.gP_predictiveSeconds, ccu);	
+			tgP += (Time.realtimeSinceStartup - tick);
 		}
 		// these next values are derived from rho, vAve, and g_P, so we simply iterate
 		// through the tiles and ONLY update the ones that have had their values changed
-		int i = 0;
 		foreach (CC_Tile cct in _tiles.Values) {
 			//if (cct.UPDATE_TILE) {
 			// (3) 	now that the velocity field and density fields are implemented,
 			// 		divide the velocity by density to get average velocity field
+			tick = Time.realtimeSinceStartup;
 			computeAverageVelocityField (cct);
+			tvAve += (Time.realtimeSinceStartup - tick);
 			// (4)	now that the average velocity field is computed, and the density
 			// 		field is in place, we calculate the speed field, f
+			tick = Time.realtimeSinceStartup;
 			computeSpeedField (cct);
+			tf += (Time.realtimeSinceStartup - tick);
 			// (5) 	the cost field depends only on f and g, so it can be computed in its
 			//		entirety now as well
+			tick = Time.realtimeSinceStartup;
 			computeCostField (cct);
+			tC += (Time.realtimeSinceStartup - tick);
 			//}
 		}
+
+		Debug.Log ("Total time in DEBUGGER: " + DEBUGGING_TIMER);
 	}
 
 	public void addNewCCUnit (CC_Unit ccu)
@@ -123,6 +156,7 @@ public class CCDynamicGlobalFields
 	public CC_Map_Package buildCCMapPackage (Rect r) {
 		float[,] gt;
 		Vector4[,] ft, Ct;
+
 
 		int xs = Mathf.FloorToInt(r.x);
 		int ys = Mathf.FloorToInt(r.y);
@@ -320,19 +354,23 @@ public class CCDynamicGlobalFields
 		int xGlobalInto = cct.myLoc.x + xLocalInto;
 		int yGlobalInto = cct.myLoc.y + yLocalInto;
 
+		float tick = 0f, chk1 = 0f, chk2 = 0f;
+		tick = Time.realtimeSinceStartup;
 		// if we're looking in an invalid direction, dont store this value
 		if (!isPointValid (xGlobalInto, yGlobalInto) || (cct.f [tileX, tileY] [d] == 0)) {
 			return Mathf.Infinity;
 		}
+		chk1 = Time.realtimeSinceStartup - tick;
 
-		// test to see if the point we're looking INTO is in another tile, and if so, pull it
+		// test to see if the point we're looking INTO is in a DIFFERENT tile, and if so, pull it
 		float gP;
+		tick = Time.realtimeSinceStartup;
 		if ((xLocalInto < 0) || (xLocalInto > tileSize - 1) || (yLocalInto < 0) || (yLocalInto > tileSize - 1)) {
 			gP = readDataFromPoint_gP (xGlobalInto, yGlobalInto);
 		} else {
 			gP = cct.gP [xLocalInto, yLocalInto];	
 		}
-
+		chk2 = Time.realtimeSinceStartup - tick;
 		float cost = (cct.f [tileX, tileY] [d] * CCvals.C_alpha + CCvals.C_beta + gP * CCvals.C_gamma) / cct.f [tileX, tileY] [d];
 
 		return cost;
@@ -342,7 +380,7 @@ public class CCDynamicGlobalFields
 	// ******************************************************************************
 	//			TOOLS AND UTILITIES
 	//******************************************************************************
-	private float[,]  linear1stOrderSplat (Vector2 v, float scalar)
+	private float[,] linear1stOrderSplat (Vector2 v, float scalar)
 	{
 		return linear1stOrderSplat (v.x, v.y, scalar);
 	}
@@ -395,7 +433,6 @@ public class CCDynamicGlobalFields
 		if (readDataFromPoint_g (x, y) == 1) {
 			return false;
 		}
-
 		return true;
 	}
 
@@ -404,13 +441,42 @@ public class CCDynamicGlobalFields
 	// ******************************************************************************************
 	private CC_Tile getLocalTile (Location l)
 	{	// define a default return value in case the location isnt found
-		Location temp = new Location(0,0);
-		foreach(Location L in _tiles.Keys) {
-			if (L == l) {
-				temp = L;
-			}
+		float tick = Time.realtimeSinceStartup;
+		CC_Tile temptile;
+
+
+//		foreach(Location L in _tiles.Keys) {
+//			if (L == l) {
+//				temp = L;
+//			}
+//		}
+//		Location loc;
+//		CC_Tile foo = new CC_Tile ();
+//		Debug.Log (_tiles.Comparer);
+//		for (int i = 0; i < 10; i++) {
+//			loc = new Location(0, 0);
+//			_tiles.Add (loc, foo);
+//			foreach (Location bar in _tiles.Keys) {
+//				Debug.Log (bar.x+","+bar.y);
+//			}
+//			Debug.Log(_tiles.Count);
+//		}
+//
+//
+//		Debug.Log("testing tile loc : " +l.x+","+l.y);
+//		Debug.Log ("count: " + _tiles.Count);
+
+
+
+		if (_tiles.ContainsKey (l)) {
+			Debug.Log ("contained key");
+			temptile = _tiles [l];
+		} else {
+			temptile = new CC_Tile (1, l);
 		}
-		return _tiles [temp];
+
+		DEBUGGING_TIMER += (Time.realtimeSinceStartup - tick);
+		return temptile;
 	}	
 
 	private void writeDataToPoint_g (int xGlobal, int yGlobal, float val)

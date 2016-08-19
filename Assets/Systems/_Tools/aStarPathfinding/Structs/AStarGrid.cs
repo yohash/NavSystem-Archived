@@ -28,6 +28,16 @@ public struct AStarGrid
 		// this portion finds suitable locations for all the nodes
 		for (int k = 0; k < nodeSizes.Length; k++) {
 			dim = nodeSizes [k];
+			// ****************************************************************
+			// EXPERIMENTAL: if a node of size 0 is entered, it is
+			// a 1x1 node, so 1st, we'll expand node boundaries to see
+			// if we can fill in gaps
+			if (dim == 0) {
+				foreach (AStarNode an in nodes) {
+					expandNodeBoundaries (g, an);
+				}
+			}
+			// ****************************************************************
 			for (int n = 0; n < xMax - dim; n++) {
 				for (int m = 0; m < yMax - dim; m++) {
 					if (nodeIsValidAtPoint (g, n, m, dim)) {

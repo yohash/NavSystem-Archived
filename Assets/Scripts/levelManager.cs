@@ -13,11 +13,35 @@ public class levelManager : MonoBehaviour {
 
 	public NavSystem _NavSystem;
 
+	public CombatManager CM;
+
+	public Unit testTank;
+
+	public List<Vector2> AStarCalculatedPath;
+	public List<Vector3> pathLocations;
+
 	int _mapX, _mapZ;
 
+	public struct LocationTest {
+		public int x;
+		public int y;
+	}
+
 	void Start () {
+//		LocationTest lt1 = new LocationTest ();
+//		lt1.x = 0;
+//		lt1.y = 0;
+//
+//		Location l1 = new Location (0, 0);
+//		Location l2 = new Location(0, 0);
+//		Debug.Log ("hey heyh hey what's up");
+//		Debug.Log (l1.Equals (lt1));
+
+
 		camera = GetComponent<Camera> ();
 		pathMesh = Instantiate (theAStarPath) as GameObject;
+
+		pathLocations = new List<Vector3> ();
 
 		_NavSystem = NavSystem.S;
 		_NavSystem.Initialize_NavSystem ();
@@ -25,30 +49,47 @@ public class levelManager : MonoBehaviour {
 		_mapX = _NavSystem.getMapWidthX();
 		_mapZ = _NavSystem.getMapLengthZ();
 
-		Invoke ("delayedCommands", 2f);
-	}
+		Invoke ("delayedCommands", 0.5f);
 
+
+
+
+
+
+
+
+
+
+
+
+
+	}
 
 	void Update() {
-		if (Input.GetKey (KeyCode.Mouse0)) {
-			start = setAStarLocation ();
-		}
 		if (Input.GetKey (KeyCode.Mouse1)) {
-			goal = setAStarLocation ();
+			Vector3 cmpos = CM.getPosition ();
+			start = new Vector2 (cmpos.x, cmpos.z);
+			setGoal ();
 			plotAStarPath ();
+			CM.setCurrentPath (AStarCalculatedPath);
 		}
 	}
 
-
 	void delayedCommands () {
-		Rect sol = new Rect (0, 0, _mapX, _mapZ);
-		Location l = new Location (35, 35);
-		List<Location> locs = new List<Location> ();
-		locs.Add (l);
+		CM.addUnitToCombatManagerGroup (testTank);
+		NavSystem.S.addCCUnitToDynamicFields (testTank);
+//		CCEikonalSolver cce = _NavSystem._DEBUG_EIKONAL_computeCCVelocityField (sol, locs);
+//		_NavSystem._DEBUG_VISUAL_boxAStarNodes ();
+//		_NavSystem._DEBUG_VISUAL_plotNodeCenterPoints ();
+//		_NavSystem._DEBUG_VISUAL_plotNodeNeighbors ();
+//		_NavSystem._DEBUG_VISUAL_plotTileFields ();
+	}
 
-		CCEikonalSolver cce = _NavSystem._DEBUG_EIKONAL_computeCCVelocityField (sol, locs);
-		_NavSystem._DEBUG_VISUAL_boxAStarNodes ();
-		_NavSystem._DEBUG_VISUAL_plotTileFields (cce.Phi);
+	void setStart () {
+		start = setAStarLocation ();
+	}
+	void setGoal () {
+		goal = setAStarLocation ();
 	}
 
 
@@ -61,16 +102,20 @@ public class levelManager : MonoBehaviour {
 			return new Vector2(hit.point.x,hit.point.z);
 		}
 		return Vector2.zero;
-
 	}
 
 	void plotAStarPath() {
-		List<Vector3> pathLocations = NavSystem.S.plotAStarOptimalPath (start, goal);
-
+		pathLocations = NavSystem.S.plotAStarOptimalPath (start, goal);
+		pathLocations.Reverse();
+		AStarCalculatedPath = new List<Vector2> ();
 		if (pathLocations.Count > 0) {
+			foreach (Vector3 v in pathLocations) {
+				Vector2 vt = new Vector2 (v.x, v.z);
+				AStarCalculatedPath.Add (vt);
+			}
+
 			pathMesh.GetComponent<meshLineGenerator> ().setLinePoints (pathLocations.ToArray (), new Vector3[pathLocations.Count], 0.5f);
 			pathMesh.GetComponent<meshLineGenerator> ().generateMesh ();
 		}
 	}
-
 }

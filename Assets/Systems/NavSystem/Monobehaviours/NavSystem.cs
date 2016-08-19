@@ -49,6 +49,7 @@ public class NavSystem : MonoBehaviour
 	public GameObject MESHGEN_STAPLE;
 	public GameObject TILEMAP_STAPLE;
 	GameObject newTileMap;
+	// 00000000000000000000000000000
 	// ****************************************************************************************************
 	//		   	INITIATION
 	// ****************************************************************************************************
@@ -86,6 +87,11 @@ public class NavSystem : MonoBehaviour
 		CCTiles_UpdateTime = 1f / CCTiles_UpdateFPS;
 		theCCDynamicFieldManager.updateTiles ();
 		StartCoroutine ("updateCCTiles");
+
+		// 00000000000000000000000000000
+		// 00000000000000000000000000000
+		// bullshit -- remove this later
+		newTileMap = Instantiate (TILEMAP_STAPLE) as GameObject;
 	}
 
 	// the CCTiles are updated according to CCTiles_UpdateTime
@@ -98,20 +104,36 @@ public class NavSystem : MonoBehaviour
 		}
 	}
 
+	public float getHeightAtPoint(float x, float y) {
+		return theMapData.getHeightMap (x, y);
+	}
+
 	// ****************************************************************************************************
 	//		PUBLIC HANDLER FUNCTIONS
 	// ************************************
 	// 		REQUEST a ContinuumCrowds velocity field solution for a given region
-	public Vector2[,] computeCCVelocityField(Rect solutionSpace, List<Location> theGoal) {
+	public Vector2[,] computeCCVelocityField(Rect solutionSpace, List<Rect> theGoal) {
+		// convert the list<rects> to a list<locations>
+		List<Location> goalLocs = convertRectsToLocations(solutionSpace, theGoal);
 		CC_Map_Package tempMap = theCCDynamicFieldManager.buildCCMapPackage (solutionSpace);
-		CCEikonalSolver cce = new CCEikonalSolver (tempMap, theGoal);
+		CCEikonalSolver cce = new CCEikonalSolver (tempMap, goalLocs);
 		return (cce.v);
 	}
 
-	public CCEikonalSolver _DEBUG_EIKONAL_computeCCVelocityField(Rect solutionSpace, List<Location> theGoal) {
+	public CCEikonalSolver _DEBUG_EIKONAL_computeCCVelocityField(Rect solutionSpace, List<Rect> theGoal) {
+		List<Location> goalLocs = convertRectsToLocations(solutionSpace, theGoal);
 		CC_Map_Package tempMap = theCCDynamicFieldManager.buildCCMapPackage (solutionSpace);
-		CCEikonalSolver cce = new CCEikonalSolver (tempMap, theGoal);
+		CCEikonalSolver cce = new CCEikonalSolver (tempMap, goalLocs);
 		return (cce);
+	}
+
+	// ************************************
+	// 		ADD CC_UNITS to theCCDynamicFieldManager 
+	public void addCCUnitToDynamicFields(Unit u) {
+		theCCDynamicFieldManager.addNewCCUnit (convertUnit_CCUnit (u));
+	}
+	CC_Unit convertUnit_CCUnit(Unit u) {
+		return (new CC_Unit (u.getVelocity (), u.getPosition ()));
 	}
 
 	// ************************************
@@ -167,14 +189,13 @@ public class NavSystem : MonoBehaviour
 
 	public Texture2D hmap;
 
-	public void _DEBUG_VISUAL_plotTileFields(float[,] map) {
+	public void _DEBUG_VISUAL_plotTileFields(Vector2 corner, float[,] map) {
 		PLOTTING_TILE_FIELDS = true;
 
-		newTileMap = Instantiate (TILEMAP_STAPLE) as GameObject;
-		newTileMap.GetComponent<TileMap> ().BuildMesh (theMapData.getHeightMap ());
-
+		Rect range = new Rect(corner, new Vector2(map.GetLength (0), map.GetLength (1)));
+		float[,] mappy = theMapData.getHeightMap (range);
+		newTileMap.GetComponent<TileMap> ().BuildMesh (corner, mappy);
 		hmap = new Texture2D (map.GetLength (0), map.GetLength (1));
-
 		map = normalizeMatrix (map);
 
 		for (int n = 0; n < map.GetLength (0); n++) {
@@ -240,7 +261,7 @@ public class NavSystem : MonoBehaviour
 
 
 
-	public void _VISUAL_DEBUG_plotNodeNeighbors ()
+	public void _DEBUG_VISUAL_plotNodeNeighbors ()
 	{
 		List<AStarNode> nodes = theAStarGrid.nodes;
 
@@ -302,5 +323,20 @@ public class NavSystem : MonoBehaviour
 		}
 
 		return f;
+	}
+
+	List<Location> convertRectsToLocations(Rect anchor, List<Rect> rects) {
+		List<Location> locations = new List<Location> ();
+		foreach (Rect r in rects) {
+			for (int x = Mathf.FloorToInt (r.x - anchor.x); x < Mathf.CeilToInt (r.x + r.width - anchor.x); x++) {
+				for (int y = Mathf.FloorToInt (r.y - anchor.y); y < Mathf.CeilToInt (r.y + r.height - anchor.y); y++) {
+					Location l = new Location (x, y);
+					if (!locations.Contains (l)) {
+						locations.Add (l);
+					}
+				}
+			}
+		}
+		return locations;
 	}
 }

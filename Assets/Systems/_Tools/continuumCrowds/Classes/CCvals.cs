@@ -11,7 +11,7 @@ public static class CCvals {
 	public static float f_slopeMax = 1f;				// correlates roughly to 30-degree incline
 	public static float f_slopeMin = 0f;				// for a min slope, nothing else makes sense...
 
-	public static float f_rhoMax = 0.6f;				// TODO: everything above this must be clamped to 'unpassable' discomfort map
+	public static float f_rhoMax = 0.6f;				// everything above this must be clamped to 'unpassable' discomfort map
 	public static float f_rhoMin = 0.2f;
 
 	public static float f_speedMax = 10f;				// will this vary by unit???

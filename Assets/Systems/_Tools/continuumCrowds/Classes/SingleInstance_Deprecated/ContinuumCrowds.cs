@@ -28,7 +28,7 @@ public class ContinuumCrowds
 	public float f_slopeMax = 1f;				// correlates roughly to 30-degree incline
 	public float f_slopeMin = 0f;				// for a min slope, nothing else makes sense...
 
-	public float f_rhoMax = 0.6f;				// TODO: everything above this must be clamped to 'unpassable' discomfort map
+	public float f_rhoMax = 0.6f;				// everything above this must be clamped to 'unpassable' discomfort map
 	public float f_rhoMin = 0.2f;
 
 	public float f_speedMax = 10f;				// will this vary by unit???

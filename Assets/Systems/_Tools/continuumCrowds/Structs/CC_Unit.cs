@@ -12,4 +12,9 @@ public struct CC_Unit {
 
 	public void setVelocity(Vector2 v) {_CC_Unit_velocity = v;}
 	public void setPostiion(Vector2 v) {_CC_Unit_position = v;}
+
+	public CC_Unit(Vector2 unitVelocity, Vector2 unitPosition) {
+		_CC_Unit_velocity = unitVelocity;
+		_CC_Unit_position = unitPosition;
+	}
 }

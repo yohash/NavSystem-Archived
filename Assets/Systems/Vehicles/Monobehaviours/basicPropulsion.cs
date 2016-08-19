@@ -1,6 +1,7 @@
 ﻿using UnityEngine;
 using System.Collections;
 
+
 public class basicPropulsion : MonoBehaviour {
 
 	public Rigidbody locomotion;
