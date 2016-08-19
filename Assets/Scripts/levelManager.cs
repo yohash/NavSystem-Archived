@@ -22,22 +22,8 @@ public class levelManager : MonoBehaviour {
 
 	int _mapX, _mapZ;
 
-	public struct LocationTest {
-		public int x;
-		public int y;
-	}
 
 	void Start () {
-//		LocationTest lt1 = new LocationTest ();
-//		lt1.x = 0;
-//		lt1.y = 0;
-//
-//		Location l1 = new Location (0, 0);
-//		Location l2 = new Location(0, 0);
-//		Debug.Log ("hey heyh hey what's up");
-//		Debug.Log (l1.Equals (lt1));
-
-
 		camera = GetComponent<Camera> ();
 		pathMesh = Instantiate (theAStarPath) as GameObject;
 
@@ -50,19 +36,6 @@ public class levelManager : MonoBehaviour {
 		_mapZ = _NavSystem.getMapLengthZ();
 
 		Invoke ("delayedCommands", 0.5f);
-
-
-
-
-
-
-
-
-
-
-
-
-
 	}
 
 	void Update() {

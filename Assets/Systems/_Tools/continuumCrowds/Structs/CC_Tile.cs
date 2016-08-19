@@ -5,7 +5,7 @@ using System.Collections;
 // the field values for Continuum Crowd that are
 // common amongst all units.
 
-public struct CC_Tile {
+public class CC_Tile {
 	// tile dimension (all tiles are square)
 	int dim;
 
@@ -44,11 +44,15 @@ public struct CC_Tile {
 	}
 
 	public void resetTile() {
-		rho = new float[dim, dim];
-		gP = new float[dim, dim];
-		vAve = new Vector2[dim, dim];
-		f = new Vector4[dim, dim];
-		C = new Vector4[dim, dim];
+		for (int i = 0; i < dim; i++) {
+			for (int k = 0; k < dim; k++) {
+				rho [i, k] = 0;
+				gP [i, k] = 0;
+				vAve [i, k] = Vector2.zero;
+				f [i, k] = Vector4.zero;
+				C [i, k] = Vector4.zero;
+			}
+		}
 
 		UPDATE_TILE = false;
 	}
