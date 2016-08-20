@@ -1,4 +1,5 @@
 ﻿using UnityEngine;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 
@@ -209,7 +210,7 @@ public struct CM_Unit_Goal_Groups {
 
 		ycomp = averagedXTop * yAmountTop + averagedXBottom * yAmountBottom;
 
-		return new Vector2 (xcomp, ycomp);
+		return (new Vector2 (xcomp, ycomp));
 	}
 
 

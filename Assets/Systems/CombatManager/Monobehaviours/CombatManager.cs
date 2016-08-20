@@ -27,7 +27,7 @@ public class CombatManager : MonoBehaviour {
 	public float CMUpdateTime;
 
 	float baseSolutionSpaceBuffer = 10f;
-	float basicGoalDimension = 4f;
+	float basicGoalDimension = 3f;
 
 
 	public Rect goal;

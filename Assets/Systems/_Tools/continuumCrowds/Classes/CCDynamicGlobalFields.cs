@@ -289,8 +289,7 @@ public class CCDynamicGlobalFields
 		// i.e. if we look left (x=-1) we want -dhdx(x,y), because the gradient is assigned with a positive x
 		// 		therefore:		also, Vector.left = [-1,0]
 		//						Vector2.Dot(Vector.left, dh[x,y]) = -dhdx;
-//		float dhInDirection = Vector2.Dot (direction, dh);
-		float dhInDirection = (direction.x * dh.x + direction.y + dh.y);
+		float dhInDirection = (direction.x * dh.x + direction.y * dh.y);
 		// calculate the speed field from the equation
 		return (CCvals.f_speedMax + (dhInDirection - CCvals.f_slopeMin) / (CCvals.f_slopeMax - CCvals.f_slopeMin) * (CCvals.f_speedMin - CCvals.f_speedMax));
 	}
@@ -300,7 +299,7 @@ public class CCDynamicGlobalFields
 		// the flow speed is simply the average velocity field of the region INTO WHICH we are looking,
 		// dotted with the direction vector
 		Vector2 vAvePt = readDataFromPoint_vAve (xI,yI);
-		float theDotPrd = (vAvePt.x * direction.x + vAvePt.y + direction.y);
+		float theDotPrd = (vAvePt.x * direction.x + vAvePt.y * direction.y);
 		return Mathf.Max (CCvals.f_speedMin, theDotPrd);
 	}
 
