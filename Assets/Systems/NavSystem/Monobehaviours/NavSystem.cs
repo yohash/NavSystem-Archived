@@ -18,8 +18,6 @@ public class NavSystem : MonoBehaviour
 	public int mapLengthZ;
 	public float terrainMaxWorldHeight;
 	public float terrainMaxHeightDifferential;
-	// struct written to transfer data from MapAnalyzer to NavSystem
-	public Map_Data_Package theMapData;
 
 	public bool ____AStarPathfinding____;
 	// the AStarGrid drives all our map-scale pathfinding
@@ -70,20 +68,22 @@ public class NavSystem : MonoBehaviour
 			terrainMaxWorldHeight,
 			terrainMaxHeightDifferential
 		);
-		theMapData = theMapAnalyzer.collectMapData ();
+		Map_Data_Package theMapData = theMapAnalyzer.collectMapData ();
 
 		// next step is to send the Map Data to the A* "grid-ifier"
 		// 		(1) scan the discomfort (g) map and build connecting series of boxes around it
 		//		(2) check all boxes for neighboring boxes and create a list of node-neighbor-costs
-		theAStarGrid = new AStarGrid (theMapData.getHeightMap (), theMapData.getDiscomfortMap (), nodeDimensions);
+		theAStarGrid = new AStarGrid (theMapData.getCompleteHeightMap (), theMapData.getCompleteDiscomfortMap (), nodeDimensions);
 
 		// next, we need to initiate the Continuum Crowds Dynamic Global Tile manager to
 		// instantiate all its tiles, and fill them with their core data
 		theCCDynamicFieldManager = new CCDynamicGlobalFields();
+		theCCDynamicFieldManager.setMapData (theMapData);
 		theCCDynamicFieldManager.setTileSize (tileSize);
-		if (!theCCDynamicFieldManager.initiateTiles (mapWidthX, mapLengthZ, theMapData.getDiscomfortMap (), theMapData.getHeightGradientMap ())) {
-			Debug.Log ("CRITICAL ERROR -- tileSize-MapDimensions MISMATCH");
-		}
+		theCCDynamicFieldManager.initiateTiles ();
+
+		// next, we start the CC Dynamic Global Fields Tile manager
+		// to begin updating its fields
 		CCTiles_UpdateTime = 1f / CCTiles_UpdateFPS;
 		theCCDynamicFieldManager.updateTiles ();
 		StartCoroutine ("updateCCTiles");
@@ -105,12 +105,12 @@ public class NavSystem : MonoBehaviour
 	}
 
 	public float getHeightAtPoint(float x, float y) {
-		return theMapData.getHeightMap (x, y);
+		return theCCDynamicFieldManager.theMapData.getInterpHeightMap (x, y);
 	}
 
 	// ****************************************************************************************************
 	//		PUBLIC HANDLER FUNCTIONS
-	// ************************************
+	// *********************************
 	// 		REQUEST a ContinuumCrowds velocity field solution for a given region
 	public Vector2[,] computeCCVelocityField(Rect solutionSpace, List<Rect> theGoal) {
 		// convert the list<rects> to a list<locations>
@@ -127,7 +127,7 @@ public class NavSystem : MonoBehaviour
 		return (cce);
 	}
 
-	// ************************************
+	// *********************************
 	// 		ADD CC_UNITS to theCCDynamicFieldManager 
 	public void addCCUnitToDynamicFields(Unit u) {
 		theCCDynamicFieldManager.addNewCCUnit (convertUnit_CCUnit (u));
@@ -136,7 +136,7 @@ public class NavSystem : MonoBehaviour
 		return (new CC_Unit (u.getVelocity (), u.getPosition ()));
 	}
 
-	// ************************************
+	// *********************************
 	// 		REQUEST an optimal path from one region to another
 	// 			Uses the grid produced earlier
 	public List<Vector3> plotAStarOptimalPath (Vector3 start, Vector3 goal) {
@@ -148,12 +148,12 @@ public class NavSystem : MonoBehaviour
 			List<AStarNode> path = constructOptimalPath (astar, astar.start, astar.goal);
 			Vector3 pathData;
 
-			pathLocations.Add (new Vector3 (goal.x, theMapData.getHeightMap (goal.x, goal.y), goal.y));
+			pathLocations.Add (new Vector3 (goal.x, getHeightAtPoint (goal.x, goal.y), goal.y));
 			foreach (AStarNode l in path) {
-				pathData = new Vector3 (l.x, theMapData.getHeightMap (l.x, l.y), l.y);
+				pathData = new Vector3 (l.x, getHeightAtPoint (l.x, l.y), l.y);
 				pathLocations.Add (pathData);
 			}
-			pathLocations.Add (new Vector3 (start.x, theMapData.getHeightMap (start.x, start.y), start.y));
+			pathLocations.Add (new Vector3 (start.x, getHeightAtPoint (start.x, start.y), start.y));
 		}
 		return pathLocations;
 	}
@@ -162,14 +162,12 @@ public class NavSystem : MonoBehaviour
 	// 		CHANGE the discomfort field
 	//			initial functionality will focus on obstructors, like buildings
 	public void modifyDiscomfortField(int globalX, int globalY, float[,] gm) {
-		// overwrite our intial Map_Data_Package
-		theMapData.overwriteDiscomfortData (globalX, globalY, gm);
-		// overwrite g on the tiles themselves 
-		theCCDynamicFieldManager.overwriteDiscomfortDataOnTiles(globalX, globalY, gm);
-		// *********** (g IS STORED IN 2 PLACES... HOW CAN i ELIMINATE THIS?) ***********************************
-		// since the absolute discomfort grid g denotes unpassable regions, we now
-		// have to regenerate our AStarGrid
-		theAStarGrid = new AStarGrid (theMapData.getHeightMap (), theMapData.getDiscomfortMap (), nodeDimensions);
+		// overwrite our Map_Data_Package
+		theCCDynamicFieldManager.theMapData.overwriteDiscomfortData (globalX, globalY, gm);
+		// since the absolute discomfort grid g denotes unpassable regions
+		// we now have to regenerate our AStarGrid
+		theAStarGrid = new AStarGrid (theCCDynamicFieldManager.theMapData.getCompleteHeightMap (), 
+			theCCDynamicFieldManager.theMapData.getCompleteDiscomfortMap (), nodeDimensions);
 	}
 
 	List<AStarNode> constructOptimalPath(AStarSearch astar, AStarNode theStart, AStarNode theGoal) {
@@ -193,7 +191,7 @@ public class NavSystem : MonoBehaviour
 		PLOTTING_TILE_FIELDS = true;
 
 		Rect range = new Rect(corner, new Vector2(map.GetLength (0), map.GetLength (1)));
-		float[,] mappy = theMapData.getHeightMap (range);
+		float[,] mappy = theCCDynamicFieldManager.theMapData.getRangeOfHeightMap (range);
 		newTileMap.GetComponent<TileMap> ().BuildMesh (corner, mappy);
 		hmap = new Texture2D (map.GetLength (0), map.GetLength (1));
 		map = normalizeMatrix (map);
@@ -243,11 +241,11 @@ public class NavSystem : MonoBehaviour
 			float val = (((float)w - lowest) / (highest - lowest));
 
 			go = Instantiate (MESHGEN_STAPLE) as GameObject;
-			Vector3 pt1 = new Vector3 (x, theMapData.getHeightMap () [x, y], y);
-			Vector3 pt2 = new Vector3 (x + w + 1, theMapData.getHeightMap () [x + w, y], y);
-			Vector3 pt3 = new Vector3 (x + w + 1, theMapData.getHeightMap () [x + w, y + h], y + h + 1);
-			Vector3 pt4 = new Vector3 (x, theMapData.getHeightMap () [x, y + h], y + h + 1);
-			Vector3 pt5 = new Vector3 (x, theMapData.getHeightMap () [x, y], y);
+			Vector3 pt1 = new Vector3 (x, theCCDynamicFieldManager.theMapData.getHeightMap (x, y), y);
+			Vector3 pt2 = new Vector3 (x + w + 1, theCCDynamicFieldManager.theMapData.getHeightMap (x + w, y), y);
+			Vector3 pt3 = new Vector3 (x + w + 1, theCCDynamicFieldManager.theMapData.getHeightMap (x + w, y + h), y + h + 1);
+			Vector3 pt4 = new Vector3 (x, theCCDynamicFieldManager.theMapData.getHeightMap (x, y + h), y + h + 1);
+			Vector3 pt5 = new Vector3 (x, theCCDynamicFieldManager.theMapData.getHeightMap (x, y), y);
 
 			points = new Vector3[]{ pt1, pt2, pt3, pt4, pt5 };
 

@@ -20,6 +20,9 @@ public struct Map_Data_Package
 
 	private int _xdim, _ydim;
 
+	public int getMapX() {return _xdim;}
+	public int getMapY() {return _ydim;}
+
 	public Map_Data_Package (float[,] h, float[,] g, Vector2[,] dh)
 	{
 		this._h = h;
@@ -49,7 +52,7 @@ public struct Map_Data_Package
 
 	// these getters containing an argument will return
 	// the data within the Rect, r
-	public float[,] getHeightMap (Rect r)
+	public float[,] getRangeOfHeightMap (Rect r)
 	{
 		r = getRectContaining (r);
 		float[,] ht = new float[(int)r.width, (int)r.height];
@@ -67,7 +70,7 @@ public struct Map_Data_Package
 		return ht;
 	}
 
-	public float[,] getDiscomfortMap (Rect r)
+	public float[,] getRangeOfDiscomfortMap (Rect r)
 	{
 		r = getRectContaining (r);
 		float[,] gt = new float[(int)r.width, (int)r.height];
@@ -85,7 +88,7 @@ public struct Map_Data_Package
 		return gt;
 	}
 
-	public Vector2[,] getHeightGradientMap (Rect r)
+	public Vector2[,] getRangeOfHeightGradientMap (Rect r)
 	{
 		r = getRectContaining (r);
 		Vector2[,] dht = new Vector2[(int)r.width, (int)r.height];
@@ -102,17 +105,17 @@ public struct Map_Data_Package
 	}
 
 	// return an inteprolated single point
-	public float getHeightMap (float x, float y)
+	public float getInterpHeightMap (float x, float y)
 	{
 		return interpolateBetweenValues (x, y, _h);
 	}
 
-	public float getDiscomfortMap (float x, float y)
+	public float getInterpDiscomfortMap (float x, float y)
 	{
 		return interpolateBetweenValues (x, y, _g);
 	}
 
-	public Vector2 getHeightGradientMap (float x, float y)
+	public Vector2 getInterpHeightGradientMap (float x, float y)
 	{
 		return interpolateBetweenValues (x, y, _dh);
 	}
@@ -135,17 +138,17 @@ public struct Map_Data_Package
 
 
 	// default return value returns the entire map
-	public float[,] getHeightMap ()
+	public float[,] getCompleteHeightMap ()
 	{
 		return _h;
 	}
 
-	public float[,] getDiscomfortMap ()
+	public float[,] getCompleteDiscomfortMap ()
 	{
 		return _g;
 	}
 
-	public Vector2[,] getHeightGradientMap ()
+	public Vector2[,] getCompleteHeightGradientMap ()
 	{
 		return _dh;
 	}

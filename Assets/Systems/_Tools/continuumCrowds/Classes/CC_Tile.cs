@@ -16,10 +16,6 @@ public class CC_Tile {
 	// might need to store this
 	public Location myLoc;
 
-	// hard fields
-	public float[,] g;
-	public Vector2[,] dh;
-
 	// the Continuum Crowds Dynamic Global fields
 	public float[,] rho;				// density field
 	public Vector2[,] vAve;				// average velocity field
@@ -30,9 +26,6 @@ public class CC_Tile {
 	public CC_Tile(int d, Location l) {
 		dim = d;
 		myLoc = l;
-
-		g = new float[dim, dim];
-		dh = new Vector2[dim, dim];
 
 		rho = new float[dim, dim];
 		gP = new float[dim, dim];
@@ -63,12 +56,6 @@ public class CC_Tile {
 	// proper matrix based on the input Type, but it was hard, and I
 	// wasnt seeing success. Thus, this 'brute force' approach)
 	// **************************************************************
-	public void writeData_g(int xTile, int yTile, float f) {
-		g [xTile, yTile] = f;
-	}
-	public void writeData_dh(int xTile, int yTile, Vector2 v) {
-		dh [xTile, yTile] = v;
-	}
 	public void writeData_rho(int xTile, int yTile, float f) {
 		rho [xTile, yTile] = f;
 	}
@@ -88,12 +75,6 @@ public class CC_Tile {
 	// **************************************************************
 	//  		READ data
 	// **************************************************************
-	public float readData_g(int xTile, int yTile) {
-		return g [xTile, yTile];
-	}
-	public Vector2 readData_dh(int xTile, int yTile) {
-		return dh [xTile, yTile];
-	}
 	public float readData_rho(int xTile, int yTile) {
 		return rho [xTile, yTile];
 	}
