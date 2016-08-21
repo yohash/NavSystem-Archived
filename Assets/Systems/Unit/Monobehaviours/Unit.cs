@@ -1,4 +1,5 @@
 ﻿using UnityEngine;
+using System;
 using System.Collections;
 
 public class Unit : MonoBehaviour {
@@ -28,6 +29,8 @@ public class Unit : MonoBehaviour {
 
 	Transform tr;
 
+	public Vector2 DEBUG_TILE_LOC;
+
 
 	void Awake () {
 		tr = transform;
@@ -43,6 +46,11 @@ public class Unit : MonoBehaviour {
 
 		_position += _velocity * Time.deltaTime;
 		tr.position = new Vector3(_position.x, NavSystem.S.getHeightAtPoint(_position.x, _position.y),_position.y);
+
+
+		Location l = new Location ( (int) Math.Floor (((double)_position.x) / ((double)NavSystem.S.tileSize)), 
+			(int) Math.Floor (((double)_position.y) / ((double)NavSystem.S.tileSize)));
+		DEBUG_TILE_LOC = new Vector2 (l.x, l.y);
 	}
 
 	void OnEnable() {

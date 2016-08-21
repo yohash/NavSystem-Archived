@@ -23,15 +23,20 @@ public class CombatManager : MonoBehaviour {
 
 	public float floatHeight;
 
+	// based on experiments updating the Eikonal solver at different rates, it
+	// seems that update rates ~0.5s produce best predictability without looking
+	// 'wooden' and artificial. Very short times (<0.25s) will cause over-compensation
+	// and some oscillation type behaviours
 	public float CMUpdateFPS;
 	public float CMUpdateTime;
 
-	float baseSolutionSpaceBuffer = 10f;
+	float baseSolutionSpaceBuffer = 4f;
 	float basicGoalDimension = 3f;
-
 
 	public Rect goal;
 	List<Rect> goalList;
+
+	Vector2[,] vField;
 
 	Transform tr;
 	public Vector3 getPosition() {
@@ -70,17 +75,15 @@ public class CombatManager : MonoBehaviour {
 					// foreach (unit in CM_UGG) 	->		assign new v
 					foreach (CM_Unit_Goal_Groups cmugg in unitGoalGroups) {						
 						if (cmugg.unitGoalGroupNeedsUpdate ()) {
-
 							cmugg.reBoundUnitsAndGoals (baseSolutionSpaceBuffer);
+							vField = NavSystem.S.computeCCVelocityField (cmugg.unitGoalSolutionSpace, cmugg.goals);
+							cmugg.setVelocityField (vField);
+							cmugg.setUnitVelocities (1f);
 
 //							CCEikonalSolver cce = NavSystem.S._DEBUG_EIKONAL_computeCCVelocityField (cmugg.unitGoalSolutionSpace, cmugg.goals);
 //							int xs = Mathf.FloorToInt (cmugg.unitGoalSolutionSpace.x);
 //							int ys = Mathf.FloorToInt (cmugg.unitGoalSolutionSpace.y);
 //							NavSystem.S._DEBUG_VISUAL_plotTileFields (new Vector2 (xs, ys), cce.Phi);
-
-							Vector2[,] vField = NavSystem.S.computeCCVelocityField (cmugg.unitGoalSolutionSpace, cmugg.goals);
-							cmugg.setVelocityField (vField);
-							cmugg.setUnitVelocities ();
 						}
 					}
 
@@ -91,9 +94,28 @@ public class CombatManager : MonoBehaviour {
 						setCurrentMoveTarget (currentPath.Dequeue ());
 						setAllGoalLists ();
 						foreach (CM_Unit_Goal_Groups cmugg in unitGoalGroups) {			
-							cmugg.setUnitVelocities ();
+							cmugg.reBoundUnitsAndGoals (baseSolutionSpaceBuffer);
+							vField = NavSystem.S.computeCCVelocityField (cmugg.unitGoalSolutionSpace, cmugg.goals);
+							cmugg.setVelocityField (vField);
+							cmugg.setUnitVelocities (1f);
+
+//							CCEikonalSolver cce = NavSystem.S._DEBUG_EIKONAL_computeCCVelocityField (cmugg.unitGoalSolutionSpace, cmugg.goals);
+//							int xs = Mathf.FloorToInt (cmugg.unitGoalSolutionSpace.x);
+//							int ys = Mathf.FloorToInt (cmugg.unitGoalSolutionSpace.y);
+//							NavSystem.S._DEBUG_VISUAL_plotTileFields (new Vector2 (xs, ys), cce.Phi);
 						}
 					} else {
+						foreach (CM_Unit_Goal_Groups cmugg in unitGoalGroups) {			
+							cmugg.reBoundUnitsAndGoals (baseSolutionSpaceBuffer);
+							vField = NavSystem.S.computeCCVelocityField (cmugg.unitGoalSolutionSpace, cmugg.goals);
+							cmugg.setVelocityField (vField);
+							cmugg.setUnitVelocities (0f);
+
+//							CCEikonalSolver cce = NavSystem.S._DEBUG_EIKONAL_computeCCVelocityField (cmugg.unitGoalSolutionSpace, cmugg.goals);
+//							int xs = Mathf.FloorToInt (cmugg.unitGoalSolutionSpace.x);
+//							int ys = Mathf.FloorToInt (cmugg.unitGoalSolutionSpace.y);
+//							NavSystem.S._DEBUG_VISUAL_plotTileFields (new Vector2 (xs, ys), cce.Phi);
+						}
 						setCurrentMoveTarget (Vector2.zero);
 					}
 				}
@@ -120,7 +142,6 @@ public class CombatManager : MonoBehaviour {
 		foreach (Vector2 v in newPath) {
 			currentPath.Enqueue (v);
 		}
-
 		setCurrentMoveTarget (currentPath.Dequeue());
 	}
 

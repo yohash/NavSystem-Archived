@@ -196,7 +196,39 @@ public class mapAnalyzer : MonoBehaviour
 		string s;
 		for (int n = 0; n < f.GetLength (0); n++) {
 			s = "";
-			for (int m = 0; m < f.GetLength (1); m++) {
+			for (int m = f.GetLength (1)-1; m > 0; m--) {
+				if (n == f.GetLength (0) - 1 && m == f.GetLength (1) - 1) {
+					s += " X ";
+				} else if (n == 0 && m == 0) {
+					s += " X ";
+				} 
+				s += f [n, m].ToString () + " "; 
+			}
+			Debug.Log (s);
+		}
+	}	
+	public void printOutMatrix (float[,] f)
+	{
+		string s;
+		for (int n = 0; n < f.GetLength (0); n++) {
+			s = "";
+			for (int m = f.GetLength (1)-1; m > 0; m--) {
+				if (n == f.GetLength (0) - 1 && m == f.GetLength (1) - 1) {
+					s += " X ";
+				} else if (n == 0 && m == 0) {
+					s += " X ";
+				} 
+				s += f [n, m].ToString () + " "; 
+			}
+			Debug.Log (s);
+		}
+	}
+	public void printOutMatrix (Vector4[,] f)
+	{
+		string s;
+		for (int n = 0; n < f.GetLength (0); n++) {
+			s = "";
+			for (int m = f.GetLength (1)-1; m > 0; m--) {
 				if (n == f.GetLength (0) - 1 && m == f.GetLength (1) - 1) {
 					s += " X ";
 				} else if (n == 0 && m == 0) {

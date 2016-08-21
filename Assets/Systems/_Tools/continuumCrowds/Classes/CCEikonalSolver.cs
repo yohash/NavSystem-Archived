@@ -1,4 +1,5 @@
 ﻿using UnityEngine;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 
@@ -43,6 +44,8 @@ public class CCEikonalSolver {
 	bool[,] accepted, goal;
 	FastPriorityQueue<fastLocation> considered;
 
+	fastLocation neighbor;
+
 	int N, M;			// store the dimensions for easy iteration
 
 	// this array of Vect2's correlates to our data format: Vector4(x, y, z, w) = (+x, +y, -x, -y)
@@ -64,6 +67,8 @@ public class CCEikonalSolver {
 		goal = new bool[N,M];
 
 		considered = new FastPriorityQueue <fastLocation> (N*M);
+
+		neighbor = new fastLocation (0, 0);
 
 		// calculate potential field (Eikonal solver)
 		computePotentialField(fields, goalLocs) ;
@@ -115,8 +120,6 @@ public class CCEikonalSolver {
 		float phi_proposed = Mathf.Infinity;
 		int xInto, yInto;
 
-		fastLocation neighbor;
-
 		// cycle through directions to check all neighbors and perform the eikonal
 		// update cycle on them
 		for (int d = 0; d < DIR_ENWS.Length; d++) {
@@ -145,8 +148,8 @@ public class CCEikonalSolver {
 					}
 				}
 				// select out cheapest 
-				phi_mx = Mathf.Min(phi_m[0],phi_m[2]);
-				phi_my = Mathf.Min(phi_m[1],phi_m[3]);
+				phi_mx = Math.Min(phi_m[0],phi_m[2]);
+				phi_my = Math.Min(phi_m[1],phi_m[3]);
 
 				// now assign C_mx based on which direction was chosen
 				if (phi_mx == phi_m[0]) {
@@ -174,18 +177,18 @@ public class CCEikonalSolver {
 				// test the quadratic
 				if (phi_mDiff_Sq > valTest) {
 					// use the simplified solution for phi_proposed
-					float phi_min = Mathf.Min(phi_mx,phi_my);
+					float phi_min = Math.Min(phi_mx,phi_my); 
 					float cost_min;
 					if (phi_min==phi_mx) {cost_min = C_mx;}
 					else {cost_min = C_my;}
 					phi_proposed = cost_min + phi_min;
 				} else {
 					// solve the quadratic
-					float radical = Mathf.Sqrt(C_mx_Sq*C_my_Sq*(C_mx_Sq + C_my_Sq - phi_mDiff_Sq));
+					float radical = (float) Math.Sqrt( (double) (C_mx_Sq*C_my_Sq*(C_mx_Sq + C_my_Sq - phi_mDiff_Sq)) );
 
 					float soln1 = (C_my_Sq*phi_mx + C_mx_Sq*phi_my + radical) / (C_mx_Sq + C_my_Sq);
 					float soln2 = (C_my_Sq*phi_mx + C_mx_Sq*phi_my - radical) / (C_mx_Sq + C_my_Sq);
-					phi_proposed = Mathf.Max(soln1,soln2);
+					phi_proposed = Math.Max(soln1,soln2); 
 				}
 
 				// we now have a phi_proposed
@@ -194,7 +197,6 @@ public class CCEikonalSolver {
 				if (phi_proposed < Phi[neighbor.x,neighbor.y]) {
 					// save the value of the lower phi
 					Phi[neighbor.x,neighbor.y] = phi_proposed;
-
 
 					if (considered.Contains(neighbor)) {
 						// re-write the old value in the queue

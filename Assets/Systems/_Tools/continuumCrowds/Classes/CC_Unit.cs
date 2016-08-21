@@ -1,7 +1,9 @@
 ﻿using UnityEngine;
 using System.Collections;
 
-public struct CC_Unit {
+public class CC_Unit {
+	private Unit _myUnit;
+
 	// private variables
 	private Vector2 _CC_Unit_velocity;
 	private Vector2 _CC_Unit_position;
@@ -13,8 +15,14 @@ public struct CC_Unit {
 	public void setVelocity(Vector2 v) {_CC_Unit_velocity = v;}
 	public void setPostiion(Vector2 v) {_CC_Unit_position = v;}
 
-	public CC_Unit(Vector2 unitVelocity, Vector2 unitPosition) {
+	public CC_Unit(Vector2 unitVelocity, Vector2 unitPosition, Unit u) {
 		_CC_Unit_velocity = unitVelocity;
 		_CC_Unit_position = unitPosition;
+		_myUnit = u;
+	}
+
+	public void updatePhysics() {
+		_CC_Unit_position = _myUnit.getPosition();
+		_CC_Unit_velocity = _myUnit.getVelocity();
 	}
 }

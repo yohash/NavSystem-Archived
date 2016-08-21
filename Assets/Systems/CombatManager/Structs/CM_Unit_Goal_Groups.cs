@@ -90,7 +90,7 @@ public struct CM_Unit_Goal_Groups {
 		unitGoalSolutionSpace = r;
 	}
 
-	public void setUnitVelocities() {
+	public void setUnitVelocities(float sc) {
 		foreach (Unit u in units) {
 			Vector2 up = u.getPosition ();
 
@@ -102,7 +102,7 @@ public struct CM_Unit_Goal_Groups {
 
 			up -= new Vector2 (xs, ys);
 
-			u.setDesiredVelocity(interpolateBetweenValues(up.x,up.y,velocityField));
+			u.setDesiredVelocity(interpolateBetweenValues(up.x,up.y,velocityField) * sc);
 		}
 	}
 
@@ -209,6 +209,10 @@ public struct CM_Unit_Goal_Groups {
 		averagedXBottom = valuesY [2] * xAmountLeft + valuesY [3] * xAmountRight;
 
 		ycomp = averagedXTop * yAmountTop + averagedXBottom * yAmountBottom;
+
+//		Debug.Log ("xVals: " + valuesX [0] + ", " + valuesX [1] + ", " + valuesX [2] + ", " + valuesX [3]);
+//		Debug.Log ("yVals: " + valuesY [0] + ", " + valuesY [1] + ", " + valuesY [2] + ", " + valuesY [3]);
+//		Debug.Log ("assigned velocity: " + xcomp + "," + ycomp);
 
 		return (new Vector2 (xcomp, ycomp));
 	}

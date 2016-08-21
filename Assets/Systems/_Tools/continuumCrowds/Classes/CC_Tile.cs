@@ -33,6 +33,13 @@ public class CC_Tile {
 		f = new Vector4[dim, dim];
 		C = new Vector4[dim, dim];
 
+		for (int i = 0; i < dim; i++) {
+			for (int k = 0; k < dim; k++) {
+				f [i, k] = Vector4.one * CCvals.f_speedMax;
+				C [i, k] = Vector4.one;
+			}
+		}
+
 		UPDATE_TILE = false;
 	}
 
@@ -42,8 +49,8 @@ public class CC_Tile {
 				rho [i, k] = 0;
 				gP [i, k] = 0;
 				vAve [i, k] = Vector2.zero;
-				f [i, k] = Vector4.zero;
-				C [i, k] = Vector4.zero;
+				f [i, k] = Vector4.one * CCvals.f_speedMax;
+				C [i, k] = Vector4.one;
 			}
 		}
 
@@ -58,9 +65,11 @@ public class CC_Tile {
 	// **************************************************************
 	public void writeData_rho(int xTile, int yTile, float f) {
 		rho [xTile, yTile] = f;
+		UPDATE_TILE = true;
 	}
 	public void writeData_gP(int xTile, int yTile, float f) {
 		gP [xTile, yTile] = f;
+		UPDATE_TILE = true;
 	}
 	public void writeData_vAve(int xTile, int yTile, Vector2 f) {
 		vAve [xTile, yTile] = f;

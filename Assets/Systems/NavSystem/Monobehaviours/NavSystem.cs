@@ -58,6 +58,12 @@ public class NavSystem : MonoBehaviour
 
 	public void Initialize_NavSystem ()
 	{
+		// 0000000000000000000000000000000000000000000000000000000000
+		// 0000000000000000000000000000000000000000000000000000000000
+		// bullshit -- remove this later
+		newTileMap = Instantiate (TILEMAP_STAPLE) as GameObject;
+		// 0000000000000000000000000000000000000000000000000000000000
+
 		// first thing is to initiate the mapAnalyzer and retrieve our map data
 		// The BIG gap being left here is - LOADING MAPS AND MAP DATA
 		// calling MapAnalyzer is a temp fix
@@ -87,11 +93,6 @@ public class NavSystem : MonoBehaviour
 		CCTiles_UpdateTime = 1f / CCTiles_UpdateFPS;
 		theCCDynamicFieldManager.updateTiles ();
 		StartCoroutine ("updateCCTiles");
-
-		// 00000000000000000000000000000
-		// 00000000000000000000000000000
-		// bullshit -- remove this later
-		newTileMap = Instantiate (TILEMAP_STAPLE) as GameObject;
 	}
 
 	// the CCTiles are updated according to CCTiles_UpdateTime
@@ -99,18 +100,22 @@ public class NavSystem : MonoBehaviour
 	// game state
 	IEnumerator updateCCTiles() {
 		while (true) {
+			// first, update the positions/velocities of all CC_Units
+			theCCDynamicFieldManager.updateCCUnits();
+			// now, have the CCDynamicGlobalFieldManager updateTiles()
 			theCCDynamicFieldManager.updateTiles ();
 			yield return new WaitForSeconds (CCTiles_UpdateTime);
 		}
 	}
 
+	// ****************************************************************************************************
+	// ****************************************************************************************************
+	//		PUBLIC HANDLER FUNCTIONS
+	// ****************************************************************************************************
 	public float getHeightAtPoint(float x, float y) {
 		return theCCDynamicFieldManager.theMapData.getInterpHeightMap (x, y);
 	}
-
-	// ****************************************************************************************************
-	//		PUBLIC HANDLER FUNCTIONS
-	// *********************************
+	// ******************************************************************
 	// 		REQUEST a ContinuumCrowds velocity field solution for a given region
 	public Vector2[,] computeCCVelocityField(Rect solutionSpace, List<Rect> theGoal) {
 		// convert the list<rects> to a list<locations>
@@ -120,28 +125,19 @@ public class NavSystem : MonoBehaviour
 		return (cce.v);
 	}
 
-	public CCEikonalSolver _DEBUG_EIKONAL_computeCCVelocityField(Rect solutionSpace, List<Rect> theGoal) {
-		List<Location> goalLocs = convertRectsToLocations(solutionSpace, theGoal);
-		CC_Map_Package tempMap = theCCDynamicFieldManager.buildCCMapPackage (solutionSpace);
-		CCEikonalSolver cce = new CCEikonalSolver (tempMap, goalLocs);
-		return (cce);
-	}
-
-	// *********************************
+	// ******************************************************************
 	// 		ADD CC_UNITS to theCCDynamicFieldManager 
 	public void addCCUnitToDynamicFields(Unit u) {
 		theCCDynamicFieldManager.addNewCCUnit (convertUnit_CCUnit (u));
 	}
-	CC_Unit convertUnit_CCUnit(Unit u) {
-		return (new CC_Unit (u.getVelocity (), u.getPosition ()));
-	}
 
-	// *********************************
+	// ******************************************************************
 	// 		REQUEST an optimal path from one region to another
 	// 			Uses the grid produced earlier
 	public List<Vector3> plotAStarOptimalPath (Vector3 start, Vector3 goal) {
 		// call AStarSearch with the grid produced earlier
 		AStarSearch astar = new AStarSearch (theAStarGrid, start, goal);
+
 		List<Vector3> pathLocations = new List<Vector3> ();
 
 		if (astar.cameFrom.ContainsKey (astar.goal)) {
@@ -158,7 +154,7 @@ public class NavSystem : MonoBehaviour
 		return pathLocations;
 	}
 
-	// *********************************
+	// ******************************************************************
 	// 		CHANGE the discomfort field
 	//			initial functionality will focus on obstructors, like buildings
 	public void modifyDiscomfortField(int globalX, int globalY, float[,] gm) {
@@ -168,6 +164,14 @@ public class NavSystem : MonoBehaviour
 		// we now have to regenerate our AStarGrid
 		theAStarGrid = new AStarGrid (theCCDynamicFieldManager.theMapData.getCompleteHeightMap (), 
 			theCCDynamicFieldManager.theMapData.getCompleteDiscomfortMap (), nodeDimensions);
+	}
+	// ****************************************************************************************************
+	// ****************************************************************************************************
+	//			BACKGROUND FUNCTIONS
+	// ****************************************************************************************************
+	CC_Unit convertUnit_CCUnit(Unit u) {
+		CC_Unit ccu = new CC_Unit (u.getVelocity (), u.getPosition (), u);
+		return (ccu);
 	}
 
 	List<AStarNode> constructOptimalPath(AStarSearch astar, AStarNode theStart, AStarNode theGoal) {
@@ -180,15 +184,25 @@ public class NavSystem : MonoBehaviour
 		}
 		return newPath;
 	}
+
 	// ****************************************************************************************************
 	//			VISUALIZATION FUNCTIONS
 	// ****************************************************************************************************
-	bool PLOTTING_TILE_FIELDS = false;
+
+	// 00000000000000000000000000000000000000000000000000000000000000000000000000000
+	// 		REQUEST a FULL CCEikonalSolver is returned: DEBUG PURPOSES ONLY
+	public CCEikonalSolver _DEBUG_EIKONAL_computeCCVelocityField(Rect solutionSpace, List<Rect> theGoal) {
+		List<Location> goalLocs = convertRectsToLocations(solutionSpace, theGoal);
+		CC_Map_Package tempMap = theCCDynamicFieldManager.buildCCMapPackage (solutionSpace);
+		CCEikonalSolver cce = new CCEikonalSolver (tempMap, goalLocs);
+		return (cce);
+	}
+	// 		REMOVE THIS CODE BLOCK LATER
+	// 00000000000000000000000000000000000000000000000000000000000000000000000000000
 
 	public Texture2D hmap;
 
 	public void _DEBUG_VISUAL_plotTileFields(Vector2 corner, float[,] map) {
-		PLOTTING_TILE_FIELDS = true;
 
 		Rect range = new Rect(corner, new Vector2(map.GetLength (0), map.GetLength (1)));
 		float[,] mappy = theCCDynamicFieldManager.theMapData.getRangeOfHeightMap (range);
