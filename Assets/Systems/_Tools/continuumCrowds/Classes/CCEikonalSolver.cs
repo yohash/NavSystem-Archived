@@ -5,6 +5,9 @@ using System.Collections.Generic;
 
 using Priority_Queue;
 
+using System.Threading;
+using Foundation.Tasks;
+
 // ******************************************************************************************
 // 							THE EIKONAL SOLVER
 // ******************************************************************************************
@@ -43,8 +46,10 @@ public class CCEikonalSolver {
 	// public lists for the Eikonal solver
 	bool[,] accepted, goal;
 	FastPriorityQueue<fastLocation> considered;
-
+	// cache an oft-used variable
 	fastLocation neighbor;
+	// for thread operations
+	bool isDone = false;
 
 	int N, M;			// store the dimensions for easy iteration
 
@@ -70,20 +75,49 @@ public class CCEikonalSolver {
 
 		neighbor = new fastLocation (0, 0);
 
+		initiateEikonalSolver (fields, goalLocs);
+	}
+
+	void _computeContinuumCrowdsFields(CC_Map_Package fields, List<Location> goalLocs) {
 		// calculate potential field (Eikonal solver)
 		computePotentialField(fields, goalLocs) ;
 		// calculate the gradient
 		calculatePotentialGradientAndNormalize();
 		// calculate velocity field
 		calculateVelocityField();
-	}
 
+		isDone = true;
+	}
 
 	void computePotentialField(CC_Map_Package fields, List<Location> goalLocs) {
 		EikonalSolver(fields, goalLocs);
 	}
 
-	void EikonalSolver (CC_Map_Package fields, List<Location> goalLocs) {
+	// *************************************************************************
+	//    THREAD OPERATIONS
+	// *************************************************************************
+	public void initiateEikonalSolver(CC_Map_Package fields, List<Location> goalLocs) {
+		var task = UnityTask.Run (() => {
+			_computeContinuumCrowdsFields(fields, goalLocs);
+		});
+	}
+
+	public IEnumerator WaitFor() {
+		while (!tUpdate()) {
+			yield return null;
+		}
+	}
+
+	public bool tUpdate () {
+		if (isDone) {
+			return true;
+		}
+		return false;
+	}
+	// *************************************************************************
+	// *************************************************************************
+
+	private void EikonalSolver (CC_Map_Package fields, List<Location> goalLocs) {
 		// start by assigning all values of potential a huge number to in-effect label them 'far'
 		for (int n=0; n<N; n++) {
 			for (int m=0; m<M; m++) {

@@ -4,7 +4,6 @@ using System.Collections.Generic;
 
 using Priority_Queue;
 
-
 public class ContinuumCrowds
 {
 	// the Continuum Crowds fields

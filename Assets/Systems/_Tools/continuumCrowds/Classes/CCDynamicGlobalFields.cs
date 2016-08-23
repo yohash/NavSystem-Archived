@@ -21,6 +21,9 @@ public class CCDynamicGlobalFields
 	private CC_Tile current_Tile;
 	private Location current_Tile_Loc;
 
+	// cached 2x2 float[] for linear1stOrderSplat (GC redux)
+	private float[,] mat = new float[2,2];
+
 	// this array of Vect2's correlates to our data format: Vector4(x, y, z, w) = (+x, +y, -x, -y)
 	Vector2[] DIR_ENWS = new Vector2[] { Vector2.right, Vector2.up, Vector2.left, Vector2.down };
 
@@ -96,9 +99,10 @@ public class CCDynamicGlobalFields
 		}
 		// update the unit specific elements (rho, vAve, g_P)
 		foreach (CC_Unit ccu in _units) {
-			if (ccu.getVelocity () != Vector2.zero) {
-				// (1) density field and velocity
-				computeDensityField (ccu); 	
+			// (1) density field and velocity
+			computeDensityField (ccu); 
+			// predictive discomfort is only applied to moving units
+			if (ccu.getVelocity () != Vector2.zero) {	
 				// (2) predictive discomfort field
 				applyPredictiveDiscomfort (CCvals.gP_predictiveSeconds, ccu);	
 			}
@@ -134,11 +138,11 @@ public class CCDynamicGlobalFields
 		float[,] gt;
 		Vector4[,] ft, Ct;
 
-		int xs = Mathf.FloorToInt(r.x);
-		int ys = Mathf.FloorToInt(r.y);
+		int xs = (int)Math.Floor((double)r.x);
+		int ys = (int)Math.Floor((double)r.y);
 
-		int xf = Mathf.CeilToInt (r.x + r.width);
-		int yf = Mathf.CeilToInt (r.y + r.height);
+		int xf = (int)Math.Ceiling((double)(r.x + r.width));
+		int yf = (int)Math.Ceiling((double)(r.y + r.height));
 
 		if (xs < 0)
 			xs = 0;
@@ -173,8 +177,8 @@ public class CCDynamicGlobalFields
 	{
 		Vector2 cc_u_pos = cc_u.getPosition ();
 
-		int xInd = Mathf.FloorToInt (cc_u_pos.x);
-		int yInd = Mathf.FloorToInt (cc_u_pos.y);
+		int xInd = (int)Math.Floor ((double)cc_u_pos.x);
+		int yInd = (int)Math.Floor ((double)cc_u_pos.y);
 
 		float[,] rho = linear1stOrderSplat (xInd, yInd, CCvals.rho_sc);
 
@@ -213,8 +217,8 @@ public class CCDynamicGlobalFields
 			sc = (vfMag - i) / vfMag;				// inverse scale
 			float[,] gP = linear1stOrderSplat (newLoc, sc * CCvals.gP_weight);
 
-			int xInd = Mathf.FloorToInt (newLoc.x);
-			int yInd = Mathf.FloorToInt (newLoc.y);
+			int xInd = (int)Math.Floor((double)newLoc.x);
+			int yInd = (int)Math.Floor((double)newLoc.y);
 
 			if(isPointValid(xInd,yInd)) 	writeDataToPoint_gP (xInd, yInd,  gP [0, 0]);
 			if(isPointValid(xInd+1,yInd))	writeDataToPoint_gP (xInd + 1, yInd,  gP [1, 0]);
@@ -287,7 +291,7 @@ public class CCDynamicGlobalFields
 			ff = ft + (r - CCvals.f_rhoMin) / (CCvals.f_rhoMax - CCvals.f_rhoMin) * (fv - ft);
 		}
 
-		return Mathf.Max (CCvals.f_speedMin, ff);
+		return Math.Max (CCvals.f_speedMin, ff);
 	}
 
 
@@ -309,7 +313,7 @@ public class CCDynamicGlobalFields
 		// dotted with the direction vector
 		Vector2 vAvePt = readDataFromPoint_vAve (xI,yI);
 		float theDotPrd = (vAvePt.x * direction.x + vAvePt.y * direction.y);
-		return Mathf.Max (CCvals.f_speedMin, theDotPrd);
+		return Math.Max (CCvals.f_speedMin, theDotPrd);
 	}
 
 	private void computeCostField (CC_Tile cct)
@@ -358,29 +362,31 @@ public class CCDynamicGlobalFields
 	{
 		return linear1stOrderSplat (v.x, v.y, scalar);
 	}
-
 	private float[,] linear1stOrderSplat (float x, float y, float scalar)
 	{
-		float[,] mat = new float[2, 2];
-
-		int xInd = (int)Mathf.Floor (x);
-		int yInd = (int)Mathf.Floor (y);
+		mat [0, 0] = 0;
+		mat [0, 1] = 0;
+		mat [1, 0] = 0;
+		mat [1, 1] = 0;
+		
+		int xInd = (int)Math.Floor ((double)x);
+		int yInd = (int)Math.Floor ((double)y);
 
 		float delx = x - xInd;
 		float dely = y - yInd;
 
 		// use += to stack density field up
 		if (isPointValid (xInd, yInd)) {
-			mat [0, 0] += Mathf.Min (1 - delx, 1 - dely) * scalar;
+			mat [0, 0] += Math.Min (1 - delx, 1 - dely) * scalar;
 		}
 		if (isPointValid (xInd + 1, yInd)) {
-			mat [1, 0] += Mathf.Min (delx, 1 - dely) * scalar;
+			mat [1, 0] += Math.Min (delx, 1 - dely) * scalar;
 		}
 		if (isPointValid (xInd, yInd + 1)) {
-			mat [0, 1] += Mathf.Min (1 - delx, dely) * scalar;
+			mat [0, 1] += Math.Min (1 - delx, dely) * scalar;
 		}
 		if (isPointValid (xInd + 1, yInd + 1)) {
-			mat [1, 1] += Mathf.Min (delx, dely) * scalar;
+			mat [1, 1] += Math.Min (delx, dely) * scalar;
 		}
 
 		return mat;
@@ -404,11 +410,7 @@ public class CCDynamicGlobalFields
 	// 				functions used for reading and writing to tiles
 	// ******************************************************************************************
 	private CC_Tile getLocalTile (Location l)
-	{		
-		if (l.x > 1 || l.y > 1) {
-			Debug.Log ("tile: " + l.x + "," + l.y);
-		}	
-
+	{	
 		if (current_Tile_Loc == l) {
 			return current_Tile;
 		}

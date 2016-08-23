@@ -4,6 +4,9 @@ using System.Collections.Generic;
 
 using Priority_Queue;
 
+using System.Threading;
+using Foundation.Tasks;
+
 
 // the A* pathfinding algorithm as implemented by www.redblobgames.com
 public class AStarSearch
@@ -12,6 +15,11 @@ public class AStarSearch
 	public Dictionary<AStarNode, float> costSoFar = new Dictionary<AStarNode, float> ();
 
 	public AStarNode start, goal;
+
+	public bool isDone;
+
+	private Vector2 vStart, vGoal;
+	private AStarGrid aGrid;
 
 	// Note: a generic version of A* would abstract over Location and also Heuristic
 	static public float Heuristic (AStarNode a, AStarNode b)
@@ -25,7 +33,54 @@ public class AStarSearch
 
 	public AStarSearch (AStarGrid grid, Vector2 startLoc, Vector2 goalLoc)
 	{
-		AStarNode[] nodes = findNearestNodes (grid, startLoc, goalLoc);
+		vStart = startLoc;
+		vGoal = goalLoc;
+		aGrid = grid;
+
+		isDone = false;
+	}
+
+	// post-processing for the user, return the path in vector2's
+	// from start to goal
+	public List<Vector2> getAStarOptimalPath() {
+		List<Vector2> pathLocations = new List<Vector2> ();
+
+		if (cameFrom.ContainsKey (goal)) {
+			List<AStarNode> path = constructOptimalPath (start, goal);
+
+
+			for (int i = path.Count - 2; i > 0; i--) {
+				AStarNode l = path [i];
+				pathLocations.Add (new Vector2 (l.x, l.y));
+			}
+		}
+		return pathLocations;
+	}
+	// *************************************************************************
+	//    THREAD OPERATIONS
+	// *************************************************************************
+	public void initiateSearch() {
+		var task = UnityTask.Run (() => {
+			_initiateSearch();
+		});
+	}
+
+	public IEnumerator WaitFor() {
+		while (!tUpdate()) {
+			yield return null;
+		}
+	}
+
+	public bool tUpdate () {
+		if (isDone) {
+			return true;
+		}
+		return false;
+	}
+	// *************************************************************************
+	// *************************************************************************
+	private void _initiateSearch() {
+		AStarNode[] nodes = findNearestNodes (aGrid, vStart, vGoal);
 
 		start = nodes [0];
 		goal = nodes [1];
@@ -41,7 +96,7 @@ public class AStarSearch
 			if (current.Equals (goal)) {
 				break;
 			}
-			foreach (AStarNeighbor an in grid.nodeNeighbors[current]) {
+			foreach (AStarNeighbor an in aGrid.nodeNeighbors[current]) {
 				float newCost = costSoFar [current]	+ an.cost;
 				if (!costSoFar.ContainsKey (an.theNode) || newCost < costSoFar [an.theNode]) {
 					costSoFar [an.theNode] = newCost;
@@ -51,6 +106,8 @@ public class AStarSearch
 				}
 			}
 		}
+
+		isDone = true;
 	}
 
 	// this finds the NEAREST NODES to the start and goal location
@@ -79,5 +136,15 @@ public class AStarSearch
 		}
 
 		return new AStarNode[]{ startNode, goalNode };
+	}
+	private List<AStarNode> constructOptimalPath(AStarNode theStart, AStarNode theGoal) {
+		List<AStarNode> newPath = new List<AStarNode>();
+		AStarNode current = theGoal;
+		newPath.Add(theGoal);
+		while(current != theStart) {
+			current = cameFrom[current];
+			newPath.Add(current);
+		}
+		return newPath;
 	}
 }

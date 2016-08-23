@@ -8,7 +8,7 @@ using System.Collections.Generic;
 // that will easily interface with NavSystem means
 // of solving ContinuumCrowd spaces
 
-public struct CM_Unit_Goal_Groups {
+public class CM_Unit_Goal_Groups {
 
 	public List<Unit> units;
 	public List<Rect> goals;
@@ -101,6 +101,8 @@ public struct CM_Unit_Goal_Groups {
 			int yf = Mathf.CeilToInt (unitGoalSolutionSpace.y + unitGoalSolutionSpace.height);
 
 			up -= new Vector2 (xs, ys);
+
+			Vector2 theV = interpolateBetweenValues (up.x, up.y, velocityField) * sc;
 
 			u.setDesiredVelocity(interpolateBetweenValues(up.x,up.y,velocityField) * sc);
 		}

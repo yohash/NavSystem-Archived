@@ -3,7 +3,9 @@ using System.Collections;
 using System.Collections.Generic;
 
 public class CombatManager : MonoBehaviour {
-	
+
+	public bool DEBUG_EIKONAL_SOLN = false;
+
 	public List<Unit> myUnits;
 
 	public Dictionary<Unit, float> unitPriorities;
@@ -16,7 +18,7 @@ public class CombatManager : MonoBehaviour {
 	public List<Vector2> myCurrentPath;
 	public Queue<Vector2> currentPath;
 
-	public Vector2 nextPoint;
+	public Vector2 nextGoal;
 	public float minDistForNewPoint;
 	float minDistToStop = 0.5f;
 	float minDistForNewPointSq;
@@ -27,10 +29,13 @@ public class CombatManager : MonoBehaviour {
 	// seems that update rates ~0.5s produce best predictability without looking
 	// 'wooden' and artificial. Very short times (<0.25s) will cause over-compensation
 	// and some oscillation type behaviours
-	public float CMUpdateFPS;
-	public float CMUpdateTime;
+	public float CC_VelocityFieldUpdateFPS;
+	public float CC_VelocityFieldUpdateTime;
 
-	float baseSolutionSpaceBuffer = 4f;
+	public float UnitVelocityUpdateFPS;
+	public float UnitVelocityUpdateTime;
+
+	float baseSolutionSpaceBuffer = 5f;
 	float basicGoalDimension = 3f;
 
 	public Rect goal;
@@ -38,7 +43,11 @@ public class CombatManager : MonoBehaviour {
 
 	Vector2[,] vField;
 
+	// cache the Eikonal Solver
+	CCEikonalSolver cce;
+
 	Transform tr;
+
 	public Vector3 getPosition() {
 		return tr.position;
 	}
@@ -53,77 +62,17 @@ public class CombatManager : MonoBehaviour {
 		unitGoalGroups = new List<CM_Unit_Goal_Groups> ();
 		myUnits_CCU = new List<CC_Unit> ();
 
+		vField = new Vector2[1, 1];
+
 		currentPath = new Queue<Vector2> ();
 		goalList = new List<Rect> ();
 
 		minDistForNewPointSq = minDistForNewPoint * minDistForNewPoint;
-		CMUpdateTime = 1 / CMUpdateFPS;
-		StartCoroutine ("CMUpdateLoop");
+		CC_VelocityFieldUpdateTime = 1 / CC_VelocityFieldUpdateFPS;
+		UnitVelocityUpdateTime = 1 / UnitVelocityUpdateFPS;
+		StartCoroutine ("CC_VelocityFieldUpdate");
+		StartCoroutine ("UnitVelocityUpdate");
 	}
-
-
-	IEnumerator CMUpdateLoop() {
-		while (true) {
-			if (nextPoint != Vector2.zero) {
-				// check to see how far from the next point we are
-				Vector2 currentLocV2 = new Vector2(tr.position.x, tr.position.z);
-				float distSq = (currentLocV2 - nextPoint).sqrMagnitude;
-
-				if (distSq > minDistForNewPointSq) {
-					// if (further than DIST)		->		check last update time (if longer than T) 
-					// foreach (CM_UGG) 			->		get new v field
-					// foreach (unit in CM_UGG) 	->		assign new v
-					foreach (CM_Unit_Goal_Groups cmugg in unitGoalGroups) {						
-						if (cmugg.unitGoalGroupNeedsUpdate ()) {
-							cmugg.reBoundUnitsAndGoals (baseSolutionSpaceBuffer);
-							vField = NavSystem.S.computeCCVelocityField (cmugg.unitGoalSolutionSpace, cmugg.goals);
-							cmugg.setVelocityField (vField);
-							cmugg.setUnitVelocities (1f);
-
-//							CCEikonalSolver cce = NavSystem.S._DEBUG_EIKONAL_computeCCVelocityField (cmugg.unitGoalSolutionSpace, cmugg.goals);
-//							int xs = Mathf.FloorToInt (cmugg.unitGoalSolutionSpace.x);
-//							int ys = Mathf.FloorToInt (cmugg.unitGoalSolutionSpace.y);
-//							NavSystem.S._DEBUG_VISUAL_plotTileFields (new Vector2 (xs, ys), cce.Phi);
-						}
-					}
-
-				} else  {
-					// else (closer than DIST to NEXTPOINT) 		-> 		get next point
-					//	if (no next point && DIST<smallerDIST) 		->		nextPoint = ZERO	
-					if (currentPath.Count > 0) {
-						setCurrentMoveTarget (currentPath.Dequeue ());
-						setAllGoalLists ();
-						foreach (CM_Unit_Goal_Groups cmugg in unitGoalGroups) {			
-							cmugg.reBoundUnitsAndGoals (baseSolutionSpaceBuffer);
-							vField = NavSystem.S.computeCCVelocityField (cmugg.unitGoalSolutionSpace, cmugg.goals);
-							cmugg.setVelocityField (vField);
-							cmugg.setUnitVelocities (1f);
-
-//							CCEikonalSolver cce = NavSystem.S._DEBUG_EIKONAL_computeCCVelocityField (cmugg.unitGoalSolutionSpace, cmugg.goals);
-//							int xs = Mathf.FloorToInt (cmugg.unitGoalSolutionSpace.x);
-//							int ys = Mathf.FloorToInt (cmugg.unitGoalSolutionSpace.y);
-//							NavSystem.S._DEBUG_VISUAL_plotTileFields (new Vector2 (xs, ys), cce.Phi);
-						}
-					} else {
-						foreach (CM_Unit_Goal_Groups cmugg in unitGoalGroups) {			
-							cmugg.reBoundUnitsAndGoals (baseSolutionSpaceBuffer);
-							vField = NavSystem.S.computeCCVelocityField (cmugg.unitGoalSolutionSpace, cmugg.goals);
-							cmugg.setVelocityField (vField);
-							cmugg.setUnitVelocities (0f);
-
-//							CCEikonalSolver cce = NavSystem.S._DEBUG_EIKONAL_computeCCVelocityField (cmugg.unitGoalSolutionSpace, cmugg.goals);
-//							int xs = Mathf.FloorToInt (cmugg.unitGoalSolutionSpace.x);
-//							int ys = Mathf.FloorToInt (cmugg.unitGoalSolutionSpace.y);
-//							NavSystem.S._DEBUG_VISUAL_plotTileFields (new Vector2 (xs, ys), cce.Phi);
-						}
-						setCurrentMoveTarget (Vector2.zero);
-					}
-				}
-			}
-			yield return new WaitForSeconds (CMUpdateTime);
-		}
-	}
-
 
 	void FixedUpdate () {
 		Vector3 newPos;
@@ -142,14 +91,13 @@ public class CombatManager : MonoBehaviour {
 		foreach (Vector2 v in newPath) {
 			currentPath.Enqueue (v);
 		}
-		setCurrentMoveTarget (currentPath.Dequeue());
-	}
-
-	public void setCurrentMoveTarget(Vector2 p) {
-		nextPoint = p;
-		goal = new Rect (p.x-basicGoalDimension/2, p.y-basicGoalDimension/2, basicGoalDimension/2, basicGoalDimension/2);
-		goalList = new List<Rect> ();
-		goalList.Add (goal);
+		if (currentPath.Count > 0) {
+			setCurrentMoveTarget (currentPath.Dequeue ());
+			setAllGoalLists ();
+			StartCoroutine (Immediate_CC_Vel_Change ());
+		} else {
+			setCurrentMoveTarget (Vector2.zero);
+		}
 	}
 
 	public void addUnitToCombatManagerGroup(Unit u) {
@@ -163,13 +111,73 @@ public class CombatManager : MonoBehaviour {
 		}
 	}
 
-	public void setAllGoalLists() {
-		for( int i=0; i<unitGoalGroups.Count; i++){
-			CM_Unit_Goal_Groups cmugg = unitGoalGroups[i];
-			cmugg.setGoalList (getCurrentMoveTarget ());
-			unitGoalGroups [i] = cmugg;
+	// **********************************************************************************************************
+	//			CO-ROUTINES AND THREADING OPERATIONS
+	// **********************************************************************************************************
+	IEnumerator CC_VelocityFieldUpdate() {
+		while (true) {
+			if (nextGoal != Vector2.zero) {
+				// check to see how far from the next point we are
+				Vector2 currentLocV2 = new Vector2(tr.position.x, tr.position.z);
+				float distSq = (currentLocV2 - nextGoal).sqrMagnitude;
+
+				// check to see if we need a new target assigned
+				if (distSq < minDistForNewPointSq) {					
+					if (currentPath.Count > 0) {
+						setCurrentMoveTarget (currentPath.Dequeue ());
+						setAllGoalLists ();
+					} else {
+						setCurrentMoveTarget (Vector2.zero);
+					}
+				}
+
+				// update the unit-goal-groups that request an update
+				foreach (CM_Unit_Goal_Groups cmugg in unitGoalGroups) {						
+					if (cmugg.unitGoalGroupNeedsUpdate ()) {
+						cmugg.reBoundUnitsAndGoals (baseSolutionSpaceBuffer);
+						yield return StartCoroutine (_computeCCVelocityField (cmugg));
+					}
+				}
+			}
+			yield return new WaitForSeconds (CC_VelocityFieldUpdateTime);
 		}
 	}
+
+	IEnumerator Immediate_CC_Vel_Change() {
+		if (nextGoal != Vector2.zero) {
+			// update the unit-goal-groups that request an update
+			foreach (CM_Unit_Goal_Groups cmugg in unitGoalGroups) {	
+				cmugg.reBoundUnitsAndGoals (baseSolutionSpaceBuffer);
+				yield return StartCoroutine (_computeCCVelocityField (cmugg));
+			}
+		}
+	}
+
+	IEnumerator UnitVelocityUpdate() {
+		while (true) {			
+			foreach (CM_Unit_Goal_Groups cmugg in unitGoalGroups) {	
+				cmugg.setUnitVelocities (1f);
+			}
+			yield return new WaitForSeconds (UnitVelocityUpdateTime);
+		}
+	}
+
+	IEnumerator _computeCCVelocityField(CM_Unit_Goal_Groups cmugg) {
+		cce = new CCEikonalSolver (
+			NavSystem.S.getCCMapPackageFromRect (cmugg.unitGoalSolutionSpace), 
+			NavSystem.S.getGoalAsLocations (cmugg.unitGoalSolutionSpace, cmugg.goals)
+		);
+		yield return StartCoroutine (cce.WaitFor ());
+
+		cmugg.setVelocityField (cce.v);
+
+		if (DEBUG_EIKONAL_SOLN) {			
+			int xs = Mathf.FloorToInt (cmugg.unitGoalSolutionSpace.x);
+			int ys = Mathf.FloorToInt (cmugg.unitGoalSolutionSpace.y);
+			NavSystem.S._DEBUG_VISUAL_plotTileFields (new Vector2 (xs, ys), cce.Phi);
+		}
+	}
+
 	// **********************************************************************************************************
 	//			backup helper functions
 	// **********************************************************************************************************
@@ -177,6 +185,14 @@ public class CombatManager : MonoBehaviour {
 		List<Rect> newGoals = new List<Rect> ();
 		newGoals.Add (goal);
 		return newGoals;
+	}
+
+	void setAllGoalLists() {
+		for( int i=0; i<unitGoalGroups.Count; i++){
+			CM_Unit_Goal_Groups cmugg = unitGoalGroups[i];
+			cmugg.setGoalList (getCurrentMoveTarget ());
+			unitGoalGroups [i] = cmugg;
+		}
 	}
 
 	Vector2 getUnitAveragePosition() {
@@ -187,5 +203,12 @@ public class CombatManager : MonoBehaviour {
 		if (myUnits.Count > 0)
 			ave /= myUnits.Count;
 		return ave;
+	}
+
+	void setCurrentMoveTarget(Vector2 p) {
+		nextGoal = p;
+		goal = new Rect (p.x-basicGoalDimension/2, p.y-basicGoalDimension/2, basicGoalDimension/2, basicGoalDimension/2);
+		goalList = new List<Rect> ();
+		goalList.Add (goal);
 	}
 }

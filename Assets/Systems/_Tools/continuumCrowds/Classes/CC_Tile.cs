@@ -36,10 +36,9 @@ public class CC_Tile {
 		for (int i = 0; i < dim; i++) {
 			for (int k = 0; k < dim; k++) {
 				f [i, k] = Vector4.one * CCvals.f_speedMax;
-				C [i, k] = Vector4.one;
+				C [i, k] = Vector4.one * (CCvals.f_speedMax * CCvals.C_alpha + CCvals.C_beta) / CCvals.f_speedMax;
 			}
 		}
-
 		UPDATE_TILE = false;
 	}
 
@@ -50,10 +49,9 @@ public class CC_Tile {
 				gP [i, k] = 0;
 				vAve [i, k] = Vector2.zero;
 				f [i, k] = Vector4.one * CCvals.f_speedMax;
-				C [i, k] = Vector4.one;
+				C [i, k] = Vector4.one * (CCvals.f_speedMax * CCvals.C_alpha + CCvals.C_beta) / CCvals.f_speedMax;
 			}
 		}
-
 		UPDATE_TILE = false;
 	}
 

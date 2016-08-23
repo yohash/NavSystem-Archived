@@ -2,6 +2,10 @@
 using System.Collections;
 using System.Collections.Generic;
 
+using System.Threading;
+using Foundation.Tasks;
+
+
 public class levelManager : MonoBehaviour {
 
 	public Camera camera;
@@ -17,11 +21,15 @@ public class levelManager : MonoBehaviour {
 
 	public Unit testTank;
 
-	public List<Vector2> AStarCalculatedPath;
+	public List<Vector2> optimalPath;
 	public List<Vector3> pathLocations;
+
+	public float minDistSQForAStar = 16f;
 
 	int _mapX, _mapZ;
 
+	// cache one instance of this for creating searches
+	AStarSearch astar;
 
 	void Start () {
 		camera = GetComponent<Camera> ();
@@ -39,12 +47,11 @@ public class levelManager : MonoBehaviour {
 	}
 
 	void Update() {
-		if (Input.GetKey (KeyCode.Mouse1)) {
+		if (Input.GetKeyDown (KeyCode.Mouse1)) {
 			Vector3 cmpos = CM.getPosition ();
 			start = new Vector2 (cmpos.x, cmpos.z);
 			setGoal ();
 			plotAStarPath ();
-			CM.setCurrentPath (AStarCalculatedPath);
 		}
 	}
 
@@ -78,17 +85,38 @@ public class levelManager : MonoBehaviour {
 	}
 
 	void plotAStarPath() {
-		pathLocations = NavSystem.S.plotAStarOptimalPath (start, goal);
-		pathLocations.Reverse();
-		AStarCalculatedPath = new List<Vector2> ();
-		if (pathLocations.Count > 0) {
-			foreach (Vector3 v in pathLocations) {
-				Vector2 vt = new Vector2 (v.x, v.z);
-				AStarCalculatedPath.Add (vt);
-			}
+		StartCoroutine (_plotAStar (start, goal));
+	}
 
+	IEnumerator _plotAStar(Vector3 s, Vector3 g ) {		
+		astar = new AStarSearch (NavSystem.S.getAStarGrid (),s,g);
+		astar.initiateSearch ();
+
+		yield return StartCoroutine (astar.WaitFor ());
+
+		plotTheRoute ();
+	}
+
+	void plotTheRoute() {
+		float dSQ = (start-goal).sqrMagnitude;
+
+		optimalPath.Clear();
+		if (dSQ > minDistSQForAStar) {
+			optimalPath.AddRange (astar.getAStarOptimalPath ());
+		}
+		optimalPath.Add (goal);
+
+		pathLocations = new List<Vector3> ();
+
+		if (optimalPath.Count > 0) {
+			pathLocations.Add (new Vector3 (start.x, NavSystem.S.getHeightAtPoint(start.x,start.y),start.y));
+			foreach (Vector2 vt in optimalPath) {
+				pathLocations.Add (new Vector3(vt.x, NavSystem.S.getHeightAtPoint(vt.x,vt.y), vt.y));
+			}
 			pathMesh.GetComponent<meshLineGenerator> ().setLinePoints (pathLocations.ToArray (), new Vector3[pathLocations.Count], 0.5f);
 			pathMesh.GetComponent<meshLineGenerator> ().generateMesh ();
 		}
+		// set the CM on the newly charted path
+		CM.setCurrentPath (optimalPath);
 	}
 }

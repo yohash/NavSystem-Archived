@@ -17,7 +17,7 @@ public static class CCvals {
 	public static float f_speedMax = 10f;				// will this vary by unit???
 	public static float f_speedMin = 0.01f;				// set to some positive number to clamp flow speed
 
-	public static float C_alpha = 8f;					// speed field weight
-	public static float C_beta = 1f;					// time weight
+	public static float C_alpha = 2f;					// speed field weight
+	public static float C_beta = 8f;					// time weight
 	public static float C_gamma = 2f;					// discomfort weight
 }

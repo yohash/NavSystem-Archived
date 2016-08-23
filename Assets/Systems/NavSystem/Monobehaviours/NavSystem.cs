@@ -2,6 +2,8 @@
 using System.Collections;
 using System.Collections.Generic;
 
+using System.Threading;
+using Foundation.Tasks;
 
 public class NavSystem : MonoBehaviour
 {
@@ -22,6 +24,8 @@ public class NavSystem : MonoBehaviour
 	public bool ____AStarPathfinding____;
 	// the AStarGrid drives all our map-scale pathfinding
 	public AStarGrid theAStarGrid;
+	// cache the search for multithreading
+	AStarSearch astar;
 	// decreasing order size of AStar nodes
 	public int[] nodeDimensions;
 
@@ -32,7 +36,9 @@ public class NavSystem : MonoBehaviour
 	public float CCTiles_UpdateFPS = 1f;
 	public float CCTiles_UpdateTime;
 	public int tileSize;
-
+	// cache two 'heavier' classes
+	CC_Map_Package tempMap;
+	CCEikonalSolver cce;
 
 	public int getMapWidthX() {
 		return mapWidthX;
@@ -102,10 +108,36 @@ public class NavSystem : MonoBehaviour
 		while (true) {
 			// first, update the positions/velocities of all CC_Units
 			theCCDynamicFieldManager.updateCCUnits();
-			// now, have the CCDynamicGlobalFieldManager updateTiles()
-			theCCDynamicFieldManager.updateTiles ();
+			// now, have the CCDynamicGlobalFieldManager updateTiles() in another thread
+			StartCoroutine("_MultiThread_CCDyn_UpdateTiles");
 			yield return new WaitForSeconds (CCTiles_UpdateTime);
 		}
+	}
+	// ****************************************************************************************************
+	// ****************************************************************************************************
+	//		MULTI-THREADED FUNCTIONS, THANKS TO UNITY TASKS
+	// ****************************************************************************************************
+	IEnumerator _MultiThread_CCDyn_UpdateTiles() {
+		var task = UnityTask.Run (() => {
+			theCCDynamicFieldManager.updateTiles ();
+		});
+		yield return task; 
+	}
+	IEnumerator _MultiThread_AStarPathfind() {
+		var task = UnityTask.Run (() => {
+			astar.initiateSearch ();
+		});
+		yield return task; 
+	}
+
+	public IEnumerator _plotAStarOptimalPath (AStarSearch ast, Vector3 start, Vector3 goal) {
+		// call AStarSearch with the grid produced earlier
+		astar = new AStarSearch (theAStarGrid, start, goal);
+		yield return StartCoroutine(_MultiThread_AStarPathfind());
+
+		ast = astar;
+		Debug.Log ("cameFrom: " + astar.cameFrom.Count);
+		yield return null;
 	}
 
 	// ****************************************************************************************************
@@ -115,14 +147,31 @@ public class NavSystem : MonoBehaviour
 	public float getHeightAtPoint(float x, float y) {
 		return theCCDynamicFieldManager.theMapData.getInterpHeightMap (x, y);
 	}
+
+	// ******************************************************************
+	// 		REQUEST the grid produced earlier
+	public AStarGrid getAStarGrid() {
+		return theAStarGrid;
+	}
 	// ******************************************************************
 	// 		REQUEST a ContinuumCrowds velocity field solution for a given region
-	public Vector2[,] computeCCVelocityField(Rect solutionSpace, List<Rect> theGoal) {
-		// convert the list<rects> to a list<locations>
-		List<Location> goalLocs = convertRectsToLocations(solutionSpace, theGoal);
-		CC_Map_Package tempMap = theCCDynamicFieldManager.buildCCMapPackage (solutionSpace);
-		CCEikonalSolver cce = new CCEikonalSolver (tempMap, goalLocs);
-		return (cce.v);
+//	public Vector2[,] computeCCVelocityField(Rect solutionSpace, List<Rect> theGoal) {
+//		// convert the list<rects> to a list<locations>
+//		List<Location> goalLocs = 
+//
+//		tempMap = theCCDynamicFieldManager.buildCCMapPackage (solutionSpace);
+//
+//		cce = new CCEikonalSolver (tempMap, goalLocs);
+//
+//		return (cce.v);
+//	}
+
+	public CC_Map_Package getCCMapPackageFromRect(Rect solutionSpace) {
+		return theCCDynamicFieldManager.buildCCMapPackage (solutionSpace);
+	}
+
+	public List<Location> getGoalAsLocations(Rect solutionSpace, List<Rect> theGoal) {
+		return convertRectsToLocations(solutionSpace, theGoal);
 	}
 
 	// ******************************************************************
@@ -131,28 +180,6 @@ public class NavSystem : MonoBehaviour
 		theCCDynamicFieldManager.addNewCCUnit (convertUnit_CCUnit (u));
 	}
 
-	// ******************************************************************
-	// 		REQUEST an optimal path from one region to another
-	// 			Uses the grid produced earlier
-	public List<Vector3> plotAStarOptimalPath (Vector3 start, Vector3 goal) {
-		// call AStarSearch with the grid produced earlier
-		AStarSearch astar = new AStarSearch (theAStarGrid, start, goal);
-
-		List<Vector3> pathLocations = new List<Vector3> ();
-
-		if (astar.cameFrom.ContainsKey (astar.goal)) {
-			List<AStarNode> path = constructOptimalPath (astar, astar.start, astar.goal);
-			Vector3 pathData;
-
-			pathLocations.Add (new Vector3 (goal.x, getHeightAtPoint (goal.x, goal.y), goal.y));
-			foreach (AStarNode l in path) {
-				pathData = new Vector3 (l.x, getHeightAtPoint (l.x, l.y), l.y);
-				pathLocations.Add (pathData);
-			}
-			pathLocations.Add (new Vector3 (start.x, getHeightAtPoint (start.x, start.y), start.y));
-		}
-		return pathLocations;
-	}
 
 	// ******************************************************************
 	// 		CHANGE the discomfort field
@@ -174,17 +201,6 @@ public class NavSystem : MonoBehaviour
 		return (ccu);
 	}
 
-	List<AStarNode> constructOptimalPath(AStarSearch astar, AStarNode theStart, AStarNode theGoal) {
-		List<AStarNode> newPath = new List<AStarNode>();
-		AStarNode current = theGoal;
-		newPath.Add(theGoal);
-		while(current != theStart) {
-			current = astar.cameFrom[current];
-			newPath.Add(current);
-		}
-		return newPath;
-	}
-
 	// ****************************************************************************************************
 	//			VISUALIZATION FUNCTIONS
 	// ****************************************************************************************************
@@ -193,8 +209,8 @@ public class NavSystem : MonoBehaviour
 	// 		REQUEST a FULL CCEikonalSolver is returned: DEBUG PURPOSES ONLY
 	public CCEikonalSolver _DEBUG_EIKONAL_computeCCVelocityField(Rect solutionSpace, List<Rect> theGoal) {
 		List<Location> goalLocs = convertRectsToLocations(solutionSpace, theGoal);
-		CC_Map_Package tempMap = theCCDynamicFieldManager.buildCCMapPackage (solutionSpace);
-		CCEikonalSolver cce = new CCEikonalSolver (tempMap, goalLocs);
+		tempMap = theCCDynamicFieldManager.buildCCMapPackage (solutionSpace);
+		cce = new CCEikonalSolver (tempMap, goalLocs);
 		return (cce);
 	}
 	// 		REMOVE THIS CODE BLOCK LATER
