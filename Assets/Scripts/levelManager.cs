@@ -18,8 +18,10 @@ public class levelManager : MonoBehaviour {
 	public NavSystem _NavSystem;
 
 	public CombatManager CM;
+	public CombatManager CM2;
 
-	public Unit testTank;
+	public List<Unit> testTanks;
+	public List<Unit> testTanks2;
 
 	public List<Vector2> optimalPath;
 	public List<Vector3> pathLocations;
@@ -31,6 +33,9 @@ public class levelManager : MonoBehaviour {
 	// cache one instance of this for creating searches
 	AStarSearch astar;
 
+	// ****************************************************************************************************
+	//		   	INITIATION
+	// ****************************************************************************************************
 	void Start () {
 		camera = GetComponent<Camera> ();
 		pathMesh = Instantiate (theAStarPath) as GameObject;
@@ -51,15 +56,26 @@ public class levelManager : MonoBehaviour {
 			Vector3 cmpos = CM.getPosition ();
 			start = new Vector2 (cmpos.x, cmpos.z);
 			setGoal ();
-			plotAStarPath ();
+			plotAStarPath (CM);
+		}
+		if (Input.GetKeyDown (KeyCode.Mouse0)) {
+			Vector3 cmpos = CM2.getPosition ();
+			start = new Vector2 (cmpos.x, cmpos.z);
+			setGoal ();
+			plotAStarPath (CM2);
 		}
 	}
 
 	void delayedCommands () {
-		CM.addUnitToCombatManagerGroup (testTank);
-		NavSystem.S.addCCUnitToDynamicFields (testTank);
-//		CCEikonalSolver cce = _NavSystem._DEBUG_EIKONAL_computeCCVelocityField (sol, locs);
-//		_NavSystem._DEBUG_VISUAL_boxAStarNodes ();
+		foreach (Unit u in testTanks) {
+			CM.addUnitToCombatManagerGroup (u);
+			NavSystem.S.addCCUnitToDynamicFields (u);
+		}
+		foreach (Unit u in testTanks2) {
+			CM2.addUnitToCombatManagerGroup (u);
+			NavSystem.S.addCCUnitToDynamicFields (u);
+		}
+		_NavSystem._DEBUG_VISUAL_boxAStarNodes ();
 //		_NavSystem._DEBUG_VISUAL_plotNodeCenterPoints ();
 //		_NavSystem._DEBUG_VISUAL_plotNodeNeighbors ();
 //		_NavSystem._DEBUG_VISUAL_plotTileFields ();
@@ -72,6 +88,18 @@ public class levelManager : MonoBehaviour {
 		goal = setAStarLocation ();
 	}
 
+	// ****************************************************************************************************
+	//		MULTI-THREADED FUNCTIONS, THANKS TO UNITY TASKS
+	// ****************************************************************************************************
+	IEnumerator _plotAStar(Vector3 s, Vector3 g, CombatManager cmt) {		
+		astar = new AStarSearch (NavSystem.S.getAStarGrid (),s,g);
+		astar.initiateSearch ();
+
+		yield return StartCoroutine (astar.WaitFor ());
+
+		plotTheRoute (cmt);
+	}
+	// ****************************************************************************************************
 
 	Vector3 setAStarLocation() {
 		RaycastHit hit;
@@ -84,20 +112,11 @@ public class levelManager : MonoBehaviour {
 		return Vector2.zero;
 	}
 
-	void plotAStarPath() {
-		StartCoroutine (_plotAStar (start, goal));
+	void plotAStarPath(CombatManager cmt) {
+		StartCoroutine (_plotAStar (start, goal, cmt));
 	}
 
-	IEnumerator _plotAStar(Vector3 s, Vector3 g ) {		
-		astar = new AStarSearch (NavSystem.S.getAStarGrid (),s,g);
-		astar.initiateSearch ();
-
-		yield return StartCoroutine (astar.WaitFor ());
-
-		plotTheRoute ();
-	}
-
-	void plotTheRoute() {
+	void plotTheRoute(CombatManager cmt) {
 		float dSQ = (start-goal).sqrMagnitude;
 
 		optimalPath.Clear();
@@ -117,6 +136,6 @@ public class levelManager : MonoBehaviour {
 			pathMesh.GetComponent<meshLineGenerator> ().generateMesh ();
 		}
 		// set the CM on the newly charted path
-		CM.setCurrentPath (optimalPath);
+		cmt.setCurrentPath (optimalPath);
 	}
 }

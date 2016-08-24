@@ -8,7 +8,7 @@ using System.Collections.Generic;
 // that will easily interface with NavSystem means
 // of solving ContinuumCrowd spaces
 
-public class CM_Unit_Goal_Groups {
+public class CM_Unit_Goal_Group {
 
 	public List<Unit> units;
 	public List<Rect> goals;
@@ -19,7 +19,7 @@ public class CM_Unit_Goal_Groups {
 	float updateTime;
 	public float timeUntilNextUpdate;
 
-	public CM_Unit_Goal_Groups(List<Unit> u, List<Rect>  loc) {
+	public CM_Unit_Goal_Group(List<Unit> u, List<Rect>  loc) {
 		units = u;
 		goals = loc;
 
@@ -90,9 +90,9 @@ public class CM_Unit_Goal_Groups {
 		unitGoalSolutionSpace = r;
 	}
 
-	public void setUnitVelocities(float sc) {
+	public void setUnitVelocities() {
 		foreach (Unit u in units) {
-			Vector2 up = u.getPosition ();
+			Vector2 up = u.getPosition () - u.getSize()/2f;
 
 			int xs = Mathf.FloorToInt(unitGoalSolutionSpace.x);
 			int ys = Mathf.FloorToInt(unitGoalSolutionSpace.y);
@@ -102,9 +102,9 @@ public class CM_Unit_Goal_Groups {
 
 			up -= new Vector2 (xs, ys);
 
-			Vector2 theV = interpolateBetweenValues (up.x, up.y, velocityField) * sc;
+			Vector2 theV = interpolateBetweenValues (up.x, up.y, velocityField);
 
-			u.setDesiredVelocity(interpolateBetweenValues(up.x,up.y,velocityField) * sc);
+			u.setDesiredVelocity(theV);
 		}
 	}
 

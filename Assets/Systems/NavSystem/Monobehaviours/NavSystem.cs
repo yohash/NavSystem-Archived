@@ -7,6 +7,8 @@ using Foundation.Tasks;
 
 public class NavSystem : MonoBehaviour
 {
+	public bool DEBUG_VIEW_TILE = false;
+
 	// single-reference NavSystem	
 	public static NavSystem S;
 
@@ -33,7 +35,7 @@ public class NavSystem : MonoBehaviour
 	// the CCDynamicGlobalFields track tiles of moving units
 	// and provide the fields for the continuum crowds solution
 	public CCDynamicGlobalFields theCCDynamicFieldManager;
-	public float CCTiles_UpdateFPS = 1f;
+	public float CCTiles_UpdateFPS;
 	public float CCTiles_UpdateTime;
 	public int tileSize;
 	// cache two 'heavier' classes
@@ -53,6 +55,7 @@ public class NavSystem : MonoBehaviour
 	public GameObject MESHGEN_STAPLE;
 	public GameObject TILEMAP_STAPLE;
 	GameObject newTileMap;
+	TileMap tm;
 	// 00000000000000000000000000000
 	// ****************************************************************************************************
 	//		   	INITIATION
@@ -68,6 +71,7 @@ public class NavSystem : MonoBehaviour
 		// 0000000000000000000000000000000000000000000000000000000000
 		// bullshit -- remove this later
 		newTileMap = Instantiate (TILEMAP_STAPLE) as GameObject;
+		tm = newTileMap.GetComponent<TileMap> ();
 		// 0000000000000000000000000000000000000000000000000000000000
 
 		// first thing is to initiate the mapAnalyzer and retrieve our map data
@@ -106,11 +110,14 @@ public class NavSystem : MonoBehaviour
 	// game state
 	IEnumerator updateCCTiles() {
 		while (true) {
+			if (DEBUG_VIEW_TILE) {
+				theCCDynamicFieldManager.drawRhoOnTile (new Location (0, 0));
+			}
 			// first, update the positions/velocities of all CC_Units
 			theCCDynamicFieldManager.updateCCUnits();
 			// now, have the CCDynamicGlobalFieldManager updateTiles() in another thread
 			StartCoroutine("_MultiThread_CCDyn_UpdateTiles");
-			yield return new WaitForSeconds (CCTiles_UpdateTime);
+			yield return new WaitForSeconds (CCTiles_UpdateTime * Random.Range(0.8f, 1.2f));
 		}
 	}
 	// ****************************************************************************************************
@@ -123,22 +130,6 @@ public class NavSystem : MonoBehaviour
 		});
 		yield return task; 
 	}
-	IEnumerator _MultiThread_AStarPathfind() {
-		var task = UnityTask.Run (() => {
-			astar.initiateSearch ();
-		});
-		yield return task; 
-	}
-
-	public IEnumerator _plotAStarOptimalPath (AStarSearch ast, Vector3 start, Vector3 goal) {
-		// call AStarSearch with the grid produced earlier
-		astar = new AStarSearch (theAStarGrid, start, goal);
-		yield return StartCoroutine(_MultiThread_AStarPathfind());
-
-		ast = astar;
-		Debug.Log ("cameFrom: " + astar.cameFrom.Count);
-		yield return null;
-	}
 
 	// ****************************************************************************************************
 	// ****************************************************************************************************
@@ -148,23 +139,9 @@ public class NavSystem : MonoBehaviour
 		return theCCDynamicFieldManager.theMapData.getInterpHeightMap (x, y);
 	}
 
-	// ******************************************************************
-	// 		REQUEST the grid produced earlier
 	public AStarGrid getAStarGrid() {
 		return theAStarGrid;
 	}
-	// ******************************************************************
-	// 		REQUEST a ContinuumCrowds velocity field solution for a given region
-//	public Vector2[,] computeCCVelocityField(Rect solutionSpace, List<Rect> theGoal) {
-//		// convert the list<rects> to a list<locations>
-//		List<Location> goalLocs = 
-//
-//		tempMap = theCCDynamicFieldManager.buildCCMapPackage (solutionSpace);
-//
-//		cce = new CCEikonalSolver (tempMap, goalLocs);
-//
-//		return (cce.v);
-//	}
 
 	public CC_Map_Package getCCMapPackageFromRect(Rect solutionSpace) {
 		return theCCDynamicFieldManager.buildCCMapPackage (solutionSpace);
@@ -174,16 +151,11 @@ public class NavSystem : MonoBehaviour
 		return convertRectsToLocations(solutionSpace, theGoal);
 	}
 
-	// ******************************************************************
-	// 		ADD CC_UNITS to theCCDynamicFieldManager 
 	public void addCCUnitToDynamicFields(Unit u) {
 		theCCDynamicFieldManager.addNewCCUnit (convertUnit_CCUnit (u));
 	}
 
-
-	// ******************************************************************
-	// 		CHANGE the discomfort field
-	//			initial functionality will focus on obstructors, like buildings
+	// 	CHANGE the discomfort field - initial functionality will focus on obstructors, like buildings
 	public void modifyDiscomfortField(int globalX, int globalY, float[,] gm) {
 		// overwrite our Map_Data_Package
 		theCCDynamicFieldManager.theMapData.overwriteDiscomfortData (globalX, globalY, gm);
@@ -197,38 +169,46 @@ public class NavSystem : MonoBehaviour
 	//			BACKGROUND FUNCTIONS
 	// ****************************************************************************************************
 	CC_Unit convertUnit_CCUnit(Unit u) {
-		CC_Unit ccu = new CC_Unit (u.getVelocity (), u.getPosition (), u);
+		CC_Unit ccu = new CC_Unit (u);
 		return (ccu);
 	}
 
 	// ****************************************************************************************************
 	//			VISUALIZATION FUNCTIONS
 	// ****************************************************************************************************
-
-	// 00000000000000000000000000000000000000000000000000000000000000000000000000000
-	// 		REQUEST a FULL CCEikonalSolver is returned: DEBUG PURPOSES ONLY
-	public CCEikonalSolver _DEBUG_EIKONAL_computeCCVelocityField(Rect solutionSpace, List<Rect> theGoal) {
-		List<Location> goalLocs = convertRectsToLocations(solutionSpace, theGoal);
-		tempMap = theCCDynamicFieldManager.buildCCMapPackage (solutionSpace);
-		cce = new CCEikonalSolver (tempMap, goalLocs);
-		return (cce);
-	}
-	// 		REMOVE THIS CODE BLOCK LATER
-	// 00000000000000000000000000000000000000000000000000000000000000000000000000000
-
 	public Texture2D hmap;
 
 	public void _DEBUG_VISUAL_plotTileFields(Vector2 corner, float[,] map) {
 
 		Rect range = new Rect(corner, new Vector2(map.GetLength (0), map.GetLength (1)));
 		float[,] mappy = theCCDynamicFieldManager.theMapData.getRangeOfHeightMap (range);
-		newTileMap.GetComponent<TileMap> ().BuildMesh (corner, mappy);
+		tm.BuildMesh (corner, mappy);
 		hmap = new Texture2D (map.GetLength (0), map.GetLength (1));
 		map = normalizeMatrix (map);
 
 		for (int n = 0; n < map.GetLength (0); n++) {
 			for (int m = 0; m < map.GetLength (1); m++) {
 				Color c = new Color (Mathf.Abs (map [n, m]), 0f, 0f, 0.5f);
+				hmap.SetPixel (n, m, c);
+			}
+		}
+		hmap.Apply ();
+		hmap.filterMode = FilterMode.Point;
+
+		newTileMap.GetComponent<TileMap> ().BuildTexture (hmap);
+	}
+
+	public void _DEBUG_VISUAL_plotTileFields(Vector2 corner, Vector2[,] map) {
+
+		Rect range = new Rect(corner, new Vector2(map.GetLength (0), map.GetLength (1)));
+		float[,] mappy = theCCDynamicFieldManager.theMapData.getRangeOfHeightMap (range);
+		tm.BuildMesh (corner, mappy);
+		hmap = new Texture2D (map.GetLength (0), map.GetLength (1));
+		float mm = vect2MatrixMax (map);
+
+		for (int n = 0; n < map.GetLength (0); n++) {
+			for (int m = 0; m < map.GetLength (1); m++) {
+				Color c = new Color (Mathf.Abs (map [n, m].x)/mm, 0f, Mathf.Abs (map [n, m].y)/mm, 0.5f);
 				hmap.SetPixel (n, m, c);
 			}
 		}
@@ -287,8 +267,6 @@ public class NavSystem : MonoBehaviour
 		}
 	}
 
-
-
 	public void _DEBUG_VISUAL_plotNodeNeighbors ()
 	{
 		List<AStarNode> nodes = theAStarGrid.nodes;
@@ -318,7 +296,6 @@ public class NavSystem : MonoBehaviour
 			}
 		}
 	}
-
 
 	// ******************************************************************************************
 	// 							HELPeR FUNCTIONS
@@ -351,6 +328,25 @@ public class NavSystem : MonoBehaviour
 		}
 
 		return f;
+	}
+
+	float vect2MatrixMax(Vector2[,] f) {
+		float maxX = 0f, maxY= 0f;
+
+		for (int n=0; n<f.GetLength(0); n++) {
+			for (int m=0; m<f.GetLength(1); m++) {
+				if (!float.IsInfinity(f[n,m].x) && !float.IsNaN(f[n,m].x) &&  Mathf.Abs( f[n, m].x ) > maxX) {
+					maxX = Mathf.Abs( f [n, m].x);
+				}
+				if (!float.IsInfinity(f[n,m].y) && !float.IsNaN(f[n,m].y) &&  Mathf.Abs( f [n, m].y) > maxY) {
+					maxY = Mathf.Abs( f [n, m].y);
+				}
+			}
+		}
+
+		float mm = Mathf.Max(maxX,maxY);
+
+		return mm;
 	}
 
 	List<Location> convertRectsToLocations(Rect anchor, List<Rect> rects) {

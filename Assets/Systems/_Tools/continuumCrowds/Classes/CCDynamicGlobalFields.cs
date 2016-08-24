@@ -92,7 +92,7 @@ public class CCDynamicGlobalFields
 	public void updateTiles ()
 	{	
 		// first, clear the tiles
-		foreach (CC_Tile cct in _tiles.Values) {			
+		foreach (CC_Tile cct in _tiles.Values) {	
 			if (cct.UPDATE_TILE) {
 				cct.resetTile ();
 			}
@@ -110,7 +110,7 @@ public class CCDynamicGlobalFields
 		// these next values are derived from rho, vAve, and g_P, so we simply iterate
 		// through the tiles and ONLY update the ones that have had their values changed
 		foreach (CC_Tile cct in _tiles.Values) {
-			if (cct.UPDATE_TILE) {				
+			if (cct.UPDATE_TILE) {			
 				// (3) 	now that the velocity field and density fields are implemented,
 				// 		divide the velocity by density to get average velocity field
 				computeAverageVelocityField (cct);
@@ -123,6 +123,16 @@ public class CCDynamicGlobalFields
 			}
 		}
 	}
+
+	// 0000000000000000000000000000000000000000000000000000000000
+	// 0000000000000000000000000000000000000000000000000000000000
+	public void drawRhoOnTile(Location l) {
+		CC_Tile cct = getLocalTile (l);
+		NavSystem.S._DEBUG_VISUAL_plotTileFields (new Vector2 (cct.myLoc.x, cct.myLoc.y), cct.gP);	
+//		NavSystem.S.theMapAnalyzer.printOutMatrix (cct.f);
+	}
+	// 0000000000000000000000000000000000000000000000000000000000
+	// 0000000000000000000000000000000000000000000000000000000000
 
 	public void addNewCCUnit (CC_Unit ccu)
 	{
@@ -171,26 +181,42 @@ public class CCDynamicGlobalFields
 		return map;
 	}
 	// ******************************************************************************************
+	// ******************************************************************************************
+	// ******************************************************************************************
 	// 							FIELD SOLVING FUNCTIONS
 	// ******************************************************************************************
 	private void computeDensityField (CC_Unit cc_u)
 	{
-		Vector2 cc_u_pos = cc_u.getPosition ();
+		Vector2[] cc_u_pos = cc_u.getPositions ();
 
-		int xInd = (int)Math.Floor ((double)cc_u_pos.x);
-		int yInd = (int)Math.Floor ((double)cc_u_pos.y);
+		for (int i = 0; i < cc_u_pos.Length; i++) {
+			int xInd = (int)Math.Floor ((double)cc_u_pos[i].x);
+			int yInd = (int)Math.Floor ((double)cc_u_pos[i].y);
 
-		float[,] rho = linear1stOrderSplat (xInd, yInd, CCvals.rho_sc);
+			float[,] rho = linear1stOrderSplat (cc_u_pos[i].x, cc_u_pos[i].y, CCvals.rho_sc);
 
-		if(isPointValid(xInd,yInd)) 	writeDataToPoint_rho (xInd, yInd, rho [0, 0]);
-		if(isPointValid(xInd+1,yInd)) 	writeDataToPoint_rho (xInd + 1, yInd, rho [1, 0]);
-		if(isPointValid(xInd,yInd+1)) 	writeDataToPoint_rho (xInd, yInd + 1, rho [0, 1]);
-		if(isPointValid(xInd+1,yInd+1)) writeDataToPoint_rho (xInd + 1, yInd + 1, rho [1, 1]);
+			if (isPointValid (xInd, yInd)) {
+				float rt = readDataFromPoint_rho(xInd, yInd);
+				writeDataToPoint_rho (xInd, yInd, rt + rho [0, 0]);
+			}
+			if (isPointValid (xInd + 1, yInd)) {
+				float rt = readDataFromPoint_rho(xInd + 1, yInd);
+				writeDataToPoint_rho (xInd + 1, yInd, rt + rho [1, 0]);
+			}
+			if (isPointValid (xInd, yInd + 1)) {
+				float rt = readDataFromPoint_rho(xInd, yInd + 1);
+				writeDataToPoint_rho (xInd, yInd + 1, rt + rho [0, 1]);
+			}
+			if (isPointValid (xInd + 1, yInd + 1)) {
+				float rt = readDataFromPoint_rho(xInd + 1, yInd + 1);
+				writeDataToPoint_rho (xInd + 1, yInd + 1, rt + rho [1, 1]);
+			}
 
-		computeVelocityFieldPoint (xInd, yInd, cc_u.getVelocity ());
-		computeVelocityFieldPoint (xInd + 1, yInd, cc_u.getVelocity ());
-		computeVelocityFieldPoint (xInd, yInd + 1, cc_u.getVelocity ());
-		computeVelocityFieldPoint (xInd + 1, yInd + 1, cc_u.getVelocity ());
+			computeVelocityFieldPoint (xInd, yInd, cc_u.getVelocity ());
+			computeVelocityFieldPoint (xInd + 1, yInd, cc_u.getVelocity ());
+			computeVelocityFieldPoint (xInd, yInd + 1, cc_u.getVelocity ());
+			computeVelocityFieldPoint (xInd + 1, yInd + 1, cc_u.getVelocity ());
+		}
 	}
 
 	private void computeVelocityFieldPoint (int x, int y, Vector2 v)
@@ -207,23 +233,40 @@ public class CCDynamicGlobalFields
 		Vector2 newLoc;
 		float sc;
 
-		Vector2 xprime = cc_u.getPosition () + cc_u.getVelocity () * numSec;
+		Vector2[] cc_u_pos = cc_u.getPositions ();
 
-		float vfMag = Vector2.Distance (cc_u.getPosition (), xprime);
+		for (int k = 0; k < cc_u_pos.Length; k++) {
 
-		for (int i = 1; i < vfMag; i++) {
-			newLoc = Vector2.MoveTowards (cc_u.getPosition (), xprime, i);
+			Vector2 xprime = cc_u_pos[k]  + cc_u.getVelocity () * numSec;
 
-			sc = (vfMag - i) / vfMag;				// inverse scale
-			float[,] gP = linear1stOrderSplat (newLoc, sc * CCvals.gP_weight);
+			float vfMag = Vector2.Distance (cc_u_pos[k], xprime);
 
-			int xInd = (int)Math.Floor((double)newLoc.x);
-			int yInd = (int)Math.Floor((double)newLoc.y);
+			for (int i = 5; i < vfMag; i++) {
+				newLoc = Vector2.MoveTowards (cc_u_pos[k], xprime, i);
 
-			if(isPointValid(xInd,yInd)) 	writeDataToPoint_gP (xInd, yInd,  gP [0, 0]);
-			if(isPointValid(xInd+1,yInd))	writeDataToPoint_gP (xInd + 1, yInd,  gP [1, 0]);
-			if(isPointValid(xInd,yInd+1)) 	writeDataToPoint_gP (xInd, yInd + 1,  gP [0, 1]);
-			if(isPointValid(xInd+1,yInd+1)) writeDataToPoint_gP (xInd + 1, yInd + 1,  gP [1, 1]);
+				sc = (vfMag - i) / vfMag;				// inverse scale
+				float[,] gP = linear1stOrderSplat (newLoc, sc * CCvals.gP_weight);
+
+				int xInd = (int)Math.Floor((double)newLoc.x);
+				int yInd = (int)Math.Floor((double)newLoc.y);
+
+				if (isPointValid (xInd, yInd)) {
+					float gPt = readDataFromPoint_gP (xInd, yInd);
+					writeDataToPoint_gP (xInd, yInd, gPt + gP [0, 0]);
+				}
+				if (isPointValid (xInd + 1, yInd)) {
+					float gPt = readDataFromPoint_gP (xInd + 1, yInd);
+					writeDataToPoint_gP (xInd + 1, yInd, gPt + gP [1, 0]);
+				}
+				if (isPointValid (xInd, yInd + 1)) {
+					float gPt = readDataFromPoint_gP (xInd, yInd + 1);
+					writeDataToPoint_gP (xInd, yInd + 1, gPt +  gP [0, 1]);
+				}
+				if (isPointValid (xInd + 1, yInd + 1)) {
+					float gPt = readDataFromPoint_gP (xInd + 1, yInd + 1);
+					writeDataToPoint_gP (xInd + 1, yInd + 1, gPt + gP [1, 1]);
+				}
+			}
 		}
 	}
 
@@ -377,16 +420,20 @@ public class CCDynamicGlobalFields
 
 		// use += to stack density field up
 		if (isPointValid (xInd, yInd)) {
-			mat [0, 0] += Math.Min (1 - delx, 1 - dely) * scalar;
+			mat [0, 0] += Math.Min (1 - delx, 1 - dely);
+			mat [0, 0] *= scalar;
 		}
 		if (isPointValid (xInd + 1, yInd)) {
-			mat [1, 0] += Math.Min (delx, 1 - dely) * scalar;
+			mat [1, 0] += Math.Min (delx, 1 - dely);
+			mat [1, 0] *= scalar;
 		}
 		if (isPointValid (xInd, yInd + 1)) {
-			mat [0, 1] += Math.Min (1 - delx, dely) * scalar;
+			mat [0, 1] += Math.Min (1 - delx, dely);
+			mat [0, 1] *= scalar;
 		}
 		if (isPointValid (xInd + 1, yInd + 1)) {
-			mat [1, 1] += Math.Min (delx, dely) * scalar;
+			mat [1, 1] += Math.Min (delx, dely) ;
+			mat [1, 1] *= scalar;
 		}
 
 		return mat;

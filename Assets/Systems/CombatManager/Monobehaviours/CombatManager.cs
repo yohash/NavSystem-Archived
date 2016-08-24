@@ -12,14 +12,13 @@ public class CombatManager : MonoBehaviour {
 	public Dictionary<Unit, float> enemyPriorities;
 
 	public List<CC_Unit> myUnits_CCU;
-	public List<CM_Unit_Goal_Groups> unitGoalGroups;
+	public List<CM_Unit_Goal_Group> unitGoalGroups;
 
 	// until paths are implemented, use this
 	public List<Vector2> myCurrentPath;
 	public Queue<Vector2> currentPath;
 
 	public Vector2 nextGoal;
-	public float minDistForNewPoint;
 	float minDistToStop = 0.5f;
 	float minDistForNewPointSq;
 
@@ -36,7 +35,7 @@ public class CombatManager : MonoBehaviour {
 	public float UnitVelocityUpdateTime;
 
 	float baseSolutionSpaceBuffer = 5f;
-	float basicGoalDimension = 3f;
+	float basicGoalDimension = 6f;
 
 	public Rect goal;
 	List<Rect> goalList;
@@ -59,7 +58,7 @@ public class CombatManager : MonoBehaviour {
 	void Start () {
 		unitPriorities = new Dictionary<Unit, float> ();
 		enemyPriorities = new Dictionary<Unit, float> ();
-		unitGoalGroups = new List<CM_Unit_Goal_Groups> ();
+		unitGoalGroups = new List<CM_Unit_Goal_Group> ();
 		myUnits_CCU = new List<CC_Unit> ();
 
 		vField = new Vector2[1, 1];
@@ -67,7 +66,7 @@ public class CombatManager : MonoBehaviour {
 		currentPath = new Queue<Vector2> ();
 		goalList = new List<Rect> ();
 
-		minDistForNewPointSq = minDistForNewPoint * minDistForNewPoint;
+		minDistForNewPointSq = (basicGoalDimension * basicGoalDimension) * 8;
 		CC_VelocityFieldUpdateTime = 1 / CC_VelocityFieldUpdateFPS;
 		UnitVelocityUpdateTime = 1 / UnitVelocityUpdateFPS;
 		StartCoroutine ("CC_VelocityFieldUpdate");
@@ -104,7 +103,7 @@ public class CombatManager : MonoBehaviour {
 		myUnits.Add (u);
 
 		if (unitGoalGroups.Count == 0) {
-			CM_Unit_Goal_Groups cmugg = new CM_Unit_Goal_Groups (myUnits, getCurrentMoveTarget ());
+			CM_Unit_Goal_Group cmugg = new CM_Unit_Goal_Group (myUnits, getCurrentMoveTarget ());
 			unitGoalGroups.Add (cmugg);
 		} else {
 			unitGoalGroups [0].addUnitToGroup (u);
@@ -127,42 +126,33 @@ public class CombatManager : MonoBehaviour {
 						setCurrentMoveTarget (currentPath.Dequeue ());
 						setAllGoalLists ();
 					} else {
-						setCurrentMoveTarget (Vector2.zero);
+//						setCurrentMoveTarget (Vector2.zero);
 					}
 				}
 
 				// update the unit-goal-groups that request an update
-				foreach (CM_Unit_Goal_Groups cmugg in unitGoalGroups) {						
+				foreach (CM_Unit_Goal_Group cmugg in unitGoalGroups) {
 					if (cmugg.unitGoalGroupNeedsUpdate ()) {
 						cmugg.reBoundUnitsAndGoals (baseSolutionSpaceBuffer);
 						yield return StartCoroutine (_computeCCVelocityField (cmugg));
 					}
 				}
 			}
-			yield return new WaitForSeconds (CC_VelocityFieldUpdateTime);
+			yield return new WaitForSeconds (CC_VelocityFieldUpdateTime * Random.Range(0.8f,1.2f));
 		}
 	}
 
 	IEnumerator Immediate_CC_Vel_Change() {
 		if (nextGoal != Vector2.zero) {
 			// update the unit-goal-groups that request an update
-			foreach (CM_Unit_Goal_Groups cmugg in unitGoalGroups) {	
+			foreach (CM_Unit_Goal_Group cmugg in unitGoalGroups) {	
 				cmugg.reBoundUnitsAndGoals (baseSolutionSpaceBuffer);
 				yield return StartCoroutine (_computeCCVelocityField (cmugg));
 			}
 		}
 	}
 
-	IEnumerator UnitVelocityUpdate() {
-		while (true) {			
-			foreach (CM_Unit_Goal_Groups cmugg in unitGoalGroups) {	
-				cmugg.setUnitVelocities (1f);
-			}
-			yield return new WaitForSeconds (UnitVelocityUpdateTime);
-		}
-	}
-
-	IEnumerator _computeCCVelocityField(CM_Unit_Goal_Groups cmugg) {
+	IEnumerator _computeCCVelocityField(CM_Unit_Goal_Group cmugg) {
 		cce = new CCEikonalSolver (
 			NavSystem.S.getCCMapPackageFromRect (cmugg.unitGoalSolutionSpace), 
 			NavSystem.S.getGoalAsLocations (cmugg.unitGoalSolutionSpace, cmugg.goals)
@@ -174,7 +164,17 @@ public class CombatManager : MonoBehaviour {
 		if (DEBUG_EIKONAL_SOLN) {			
 			int xs = Mathf.FloorToInt (cmugg.unitGoalSolutionSpace.x);
 			int ys = Mathf.FloorToInt (cmugg.unitGoalSolutionSpace.y);
-			NavSystem.S._DEBUG_VISUAL_plotTileFields (new Vector2 (xs, ys), cce.Phi);
+			NavSystem.S._DEBUG_VISUAL_plotTileFields (new Vector2 (xs, ys), cce.v);
+//			NavSystem.S.theMapAnalyzer.printOutMatrix (cce.f);
+		}
+	}
+
+	IEnumerator UnitVelocityUpdate() {
+		while (true) {			
+			foreach (CM_Unit_Goal_Group cmugg in unitGoalGroups) {	
+				cmugg.setUnitVelocities ();
+			}
+			yield return new WaitForSeconds (UnitVelocityUpdateTime);
 		}
 	}
 
@@ -189,7 +189,7 @@ public class CombatManager : MonoBehaviour {
 
 	void setAllGoalLists() {
 		for( int i=0; i<unitGoalGroups.Count; i++){
-			CM_Unit_Goal_Groups cmugg = unitGoalGroups[i];
+			CM_Unit_Goal_Group cmugg = unitGoalGroups[i];
 			cmugg.setGoalList (getCurrentMoveTarget ());
 			unitGoalGroups [i] = cmugg;
 		}
@@ -207,7 +207,7 @@ public class CombatManager : MonoBehaviour {
 
 	void setCurrentMoveTarget(Vector2 p) {
 		nextGoal = p;
-		goal = new Rect (p.x-basicGoalDimension/2, p.y-basicGoalDimension/2, basicGoalDimension/2, basicGoalDimension/2);
+		goal = new Rect (p.x-basicGoalDimension/2, p.y-basicGoalDimension/2, basicGoalDimension, basicGoalDimension);
 		goalList = new List<Rect> ();
 		goalList.Add (goal);
 	}
