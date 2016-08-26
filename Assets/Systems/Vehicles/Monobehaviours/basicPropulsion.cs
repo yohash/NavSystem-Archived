@@ -57,8 +57,8 @@ public class basicPropulsion : MonoBehaviour {
 		mat_R.EnableKeyword("_EMISSION");             
 
 		mass = locomotionRB.mass;
-		linearForce = linearAccel * mass;
-		breakingForce = breakingAccel * mass;
+		linearForce = linearAccel * mass *2;
+		breakingForce = breakingAccel * mass * 2;
 
 		maxTurningRadiansPerSecond = maxTurningDegreesPerSecond * Mathf.PI / 180f;
 	}
@@ -122,11 +122,8 @@ public class basicPropulsion : MonoBehaviour {
 
 		// have car turn based on turning radius
 		if (newSpeedSq > 0) {
-			if (currentSpeedSq < 1) {
-				newForwardAfterRote = Vector3.RotateTowards (currentForward, newVel3, maxTurningRadiansPerSecond * Time.deltaTime * currentSpeedSq, 0f);
-			} else {
-				newForwardAfterRote = Vector3.RotateTowards (currentForward, newVel3, maxTurningRadiansPerSecond * Time.deltaTime / (currentSpeedSq/4f), 0f);
-			}
+			newForwardAfterRote = Vector3.RotateTowards (currentForward, newVel3, maxTurningRadiansPerSecond * Time.deltaTime, 0f);
+
 			locomotionRB.MoveRotation (locomotionRB.rotation * Quaternion.FromToRotation(currentForward,newForwardAfterRote));
 		}
 	}

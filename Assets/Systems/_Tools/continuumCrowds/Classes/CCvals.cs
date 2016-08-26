@@ -18,7 +18,7 @@ public static class CCvals {
 	public static float f_speedMax = 10f;				// set this to 1 to automatically just receive normalized 'direction'
 														// then, we simply scale by the units particular maxSpeed
 
-	public static float C_alpha = 4f;					// speed field weight
+	public static float C_alpha = 8f;					// speed field weight
 	public static float C_beta = 1f;					// time weight
-	public static float C_gamma = 4f;					// discomfort weight
+	public static float C_gamma = 2f;					// discomfort weight
 }

@@ -128,7 +128,7 @@ public class CCDynamicGlobalFields
 	// 0000000000000000000000000000000000000000000000000000000000
 	public void drawRhoOnTile(Location l) {
 		CC_Tile cct = getLocalTile (l);
-		NavSystem.S._DEBUG_VISUAL_plotTileFields (new Vector2 (cct.myLoc.x, cct.myLoc.y), cct.gP);	
+		NavSystem.S._DEBUG_VISUAL_plotTileFields (new Vector2 (cct.myLoc.x, cct.myLoc.y), cct.rho);	
 //		NavSystem.S.theMapAnalyzer.printOutMatrix (cct.f);
 	}
 	// 0000000000000000000000000000000000000000000000000000000000

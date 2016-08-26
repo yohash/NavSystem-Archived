@@ -19,8 +19,7 @@ public class CombatManager : MonoBehaviour {
 	public Queue<Vector2> currentPath;
 
 	public Vector2 nextGoal;
-	float minDistToStop = 0.5f;
-	float minDistForNewPointSq;
+	public float minDistForNewPointSq;
 
 	public float floatHeight;
 
