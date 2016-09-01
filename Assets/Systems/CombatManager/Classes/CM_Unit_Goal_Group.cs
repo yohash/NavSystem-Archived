@@ -3,7 +3,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 
-// the CM_Unit_Goal_Groups struct is explicitly for the 
+// the CM_Unit_Goal_Groups class is explicitly for the 
 // combat manager to group his units into packages 
 // that will easily interface with NavSystem means
 // of solving ContinuumCrowd spaces
@@ -92,7 +92,7 @@ public class CM_Unit_Goal_Group {
 
 	public void setUnitVelocities() {
 		foreach (Unit u in units) {
-			Vector2 up = u.getPosition () - u.getSize()/2f;
+			Vector2 up = u.getEquivalentPositionOfVehical() ;
 
 			int xs = Mathf.FloorToInt(unitGoalSolutionSpace.x);
 			int ys = Mathf.FloorToInt(unitGoalSolutionSpace.y);

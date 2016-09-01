@@ -8,7 +8,6 @@ public class Unit : MonoBehaviour {
 	// since Vector3.forward = (0,0,1), this will make propulsion easier
 	// width, length
 	public int sizeX = 1, sizeZ = 1;
-
 	public int getWidth() {
 		return sizeX;
 	}
@@ -18,6 +17,8 @@ public class Unit : MonoBehaviour {
 	public Vector2 getSize() {
 		return (new Vector2 (sizeX, sizeZ));
 	}
+
+	private CC_Unit _myCCU;
 
 	public float maxSpeed = 5f;
 
@@ -55,10 +56,17 @@ public class Unit : MonoBehaviour {
 
 	}
 
-	// this function is fed a velocity value normalized from 0-1 (in magnitude)
+	public void setMyCC_Unit(CC_Unit ccu) {
+		_myCCU = ccu;
+	}
+
+	public CC_Unit getMyCC_Unit() {
+		return _myCCU;
+	}
+
+	// this function is fed a velocity value (in magnitude)
 	// it scales it by its current maxspeed to yield the desired velocity
 	public void setDesiredVelocity(Vector2 v) {
-		v *= maxSpeed;
 		// check just in case, make sure we dont exceed maxSpeed
 		if (v.sqrMagnitude > maxSpeed * maxSpeed) {
 			v = v.normalized * maxSpeed;
@@ -108,5 +116,30 @@ public class Unit : MonoBehaviour {
 			CC_Unit_Locs[i] = temp;
 		}
 		return CC_Unit_Locs;
+	}
+
+	public Vector2 getEquivalentPositionOfVehical() {
+		Vector2 CC_Unit_Front = new Vector2(0f, sizeZ/2f);
+
+		Vector3 currentForward = tr.TransformDirection (0, 0, 1f);
+		currentForward.y = 0f;
+
+		float roteAngle = Vector3.Angle (new Vector3(0f,0f,1f), currentForward);
+		if (currentForward.x < 0) {
+			roteAngle = 360f - roteAngle;
+		}
+		roteAngle *= -1;  // I calculate the vector to rotate clockwise about (0,0), when ACTUALLY
+		// rotation matrices rotate vectors COUNTER clockwise (in direction of +phase)
+		// so I gotta *=(-1) this guy
+		// then we rotate the vector
+		Vector2 temp;
+		temp = CC_Unit_Front;
+		temp.x = Mathf.Cos (roteAngle * Mathf.Deg2Rad) * CC_Unit_Front.x - Mathf.Sin (roteAngle * Mathf.Deg2Rad) * CC_Unit_Front.y;
+		temp.y = Mathf.Sin (roteAngle * Mathf.Deg2Rad) * CC_Unit_Front.x + Mathf.Cos (roteAngle * Mathf.Deg2Rad) * CC_Unit_Front.y;
+		temp.x = temp.x + _position.x;// - 0.5f;
+		temp.y = temp.y + _position.y;// - 0.5f;
+		CC_Unit_Front = temp;
+
+		return CC_Unit_Front;
 	}
 }

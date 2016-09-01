@@ -31,7 +31,6 @@ public class basicPropulsion : MonoBehaviour {
 	public float breakingAccel = 10f;
 	public float breakingForce;
 
-
 	// this value is given to the propulsion system from the unit itself
 	// the value will be given to the Unit by its Combat Manager, after it calls
 	// for an Eikonal solution

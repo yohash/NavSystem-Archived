@@ -22,7 +22,7 @@ public class AStarSearch
 	private AStarGrid aGrid;
 
 	// Note: a generic version of A* would abstract over Location and also Heuristic
-	static public float Heuristic (AStarNode a, AStarNode b)
+	float Heuristic (AStarNode a, AStarNode b)
 	{
 		float absX = Mathf.Abs(a.x - b.x);
 		float absY = Mathf.Abs(a.y - b.y);

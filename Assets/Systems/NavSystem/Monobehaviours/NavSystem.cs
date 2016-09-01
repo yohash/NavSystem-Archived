@@ -36,11 +36,8 @@ public class NavSystem : MonoBehaviour
 	// and provide the fields for the continuum crowds solution
 	public CCDynamicGlobalFields theCCDynamicFieldManager;
 	public float CCTiles_UpdateFPS;
-	public float CCTiles_UpdateTime;
+	float CCTiles_UpdateTime;
 	public int tileSize;
-	// cache two 'heavier' classes
-	CC_Map_Package tempMap;
-	CCEikonalSolver cce;
 
 	public int getMapWidthX() {
 		return mapWidthX;
@@ -154,6 +151,9 @@ public class NavSystem : MonoBehaviour
 	public void addCCUnitToDynamicFields(Unit u) {
 		theCCDynamicFieldManager.addNewCCUnit (convertUnit_CCUnit (u));
 	}
+	public void removeCCUnitToDynamicFields(Unit u) {
+		theCCDynamicFieldManager.removeCCUnit (u.getMyCC_Unit());
+	}
 
 	// 	CHANGE the discomfort field - initial functionality will focus on obstructors, like buildings
 	public void modifyDiscomfortField(int globalX, int globalY, float[,] gm) {
@@ -170,6 +170,7 @@ public class NavSystem : MonoBehaviour
 	// ****************************************************************************************************
 	CC_Unit convertUnit_CCUnit(Unit u) {
 		CC_Unit ccu = new CC_Unit (u);
+		u.setMyCC_Unit (ccu);
 		return (ccu);
 	}
 

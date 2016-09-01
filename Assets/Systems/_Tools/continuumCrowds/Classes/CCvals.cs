@@ -15,10 +15,10 @@ public static class CCvals {
 	public static float f_rhoMin = 0.2f;
 
 	public static float f_speedMin = 0.01f;				// set to some small positive number to clamp flow speed
-	public static float f_speedMax = 10f;				// set this to 1 to automatically just receive normalized 'direction'
+	public static float f_speedMax = 40f;				// set this to 1 to automatically just receive normalized 'direction'
 														// then, we simply scale by the units particular maxSpeed
 
-	public static float C_alpha = 8f;					// speed field weight
+	public static float C_alpha = 10f;					// speed field weight
 	public static float C_beta = 1f;					// time weight
-	public static float C_gamma = 2f;					// discomfort weight
+	public static float C_gamma = 1f;					// discomfort weight
 }
